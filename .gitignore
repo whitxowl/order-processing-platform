@@ -1,0 +1,14 @@
+# .gitignore
+
+.secrets/
+*.env
+.env.*
+
+target/
+*.jar
+*.class
+
+.idea/
+*.iml
+
+.dockerignore

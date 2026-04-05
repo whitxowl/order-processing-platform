@@ -1,0 +1,25 @@
+global:
+  imageTag: latest
+
+services:
+  apiGateway:
+    replicas: 1
+    port: 8080
+  authService:
+    replicas: 1
+    port: 8081
+  userService:
+    replicas: 1
+    port: 8082
+  productService:
+    replicas: 1
+    port: 8083
+  inventoryService:
+    replicas: 1
+    port: 8084
+  orderService:
+    replicas: 1
+    port: 8085
+  notificationService:
+    replicas: 1
+    port: 8086
