@@ -5,21 +5,45 @@ services:
   apiGateway:
     replicas: 1
     port: 8080
+    env:
+      AUTH_SERVICE_URL: http://auth-service:8081
+
   authService:
     replicas: 1
     port: 8081
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=auth_service
+
   userService:
     replicas: 1
     port: 8082
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=user_service
+
   productService:
     replicas: 1
     port: 8083
+    env:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/product_db
+
   inventoryService:
     replicas: 1
     port: 8084
+    grpcPort: 9094
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=inventory_service
+
   orderService:
     replicas: 1
     port: 8085
+    grpcPort: 9095
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=order_service
+      INVENTORY_GRPC_HOST: inventory-service
+      INVENTORY_GRPC_PORT: "9094"
+
   notificationService:
     replicas: 1
     port: 8086
+    env:
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/notification_db
