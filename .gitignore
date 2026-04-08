@@ -10,7 +10,6 @@
 target/
 *.jar
 *.class
-.mvn
 
 # IDE
 .idea/
