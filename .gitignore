@@ -1,14 +1,20 @@
-# .gitignore
-
-.secrets/
+# Secrets
+.secrets/**
+!.secrets/
+!.secrets/dev/
+!.secrets/dev/.env.example
 *.env
-.env.*
+!.env.example
 
+# Maven
 target/
 *.jar
 *.class
+.mvn
 
+# IDE
 .idea/
 *.iml
 
+# Docker
 .dockerignore
