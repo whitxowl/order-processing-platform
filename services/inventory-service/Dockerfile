@@ -4,13 +4,13 @@ WORKDIR /build
 
 COPY . .
 
-RUN mvn package -pl services/inventory-service -am -DskipTests --no-transfer-progress -q
+RUN mvn package -pl services/inventory-service/inventory-service-src -am -DskipTests --no-transfer-progress -q
 
 FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
-COPY --from=builder /build/services/inventory-service/target/*.jar app.jar
+COPY --from=builder /build/services/inventory-service/inventory-service-src/target/*.jar app.jar
 
 EXPOSE 8084
 EXPOSE 9094

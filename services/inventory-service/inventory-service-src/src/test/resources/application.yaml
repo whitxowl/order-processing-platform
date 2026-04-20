@@ -1,0 +1,26 @@
+spring:
+  test:
+    database:
+      replace: none
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+  flyway:
+    enabled: false
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+
+app:
+  kafka:
+    topics:
+      order-created: order.created
+      inventory-reserved: inventory.reserved
+
+grpc:
+  server:
+    port: 0
