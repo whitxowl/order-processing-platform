@@ -1,6 +1,7 @@
 package com.whitxowl.inventoryservice.grpc;
 
-import com.whitxowl.inventoryservice.exception.DuplicateReservationException;
+import com.whitxowl.inventoryservice.api.dto.response.StockResponse;
+import com.whitxowl.inventoryservice.exception.InventoryItemNotFoundException;
 import com.whitxowl.inventoryservice.exception.ReservationNotFoundException;
 import com.whitxowl.inventoryservice.service.InventoryService;
 import io.grpc.stub.StreamObserver;
@@ -16,32 +17,27 @@ public class GrpcInventoryService extends InventoryServiceGrpc.InventoryServiceI
     private final InventoryService inventoryService;
 
     @Override
-    public void checkAndReserve(ReserveRequest request,
-                                StreamObserver<ReserveResponse> responseObserver) {
-        String orderId   = request.getOrderId();
+    public void checkStock(CheckStockRequest request,
+                           StreamObserver<CheckStockResponse> responseObserver) {
         String productId = request.getProductId();
         int    quantity  = request.getQuantity();
 
-        log.info("gRPC checkAndReserve [orderId={}, productId={}, quantity={}]",
-                orderId, productId, quantity);
+        log.info("gRPC checkStock [productId={}, quantity={}]", productId, quantity);
 
         try {
-            inventoryService.reserve(orderId, productId, quantity);
-            responseObserver.onNext(ReserveResponse.newBuilder()
-                    .setSuccess(true)
+            StockResponse stock = inventoryService.getStock(productId);
+            boolean available = stock.getAvailable() >= quantity;
+
+            responseObserver.onNext(CheckStockResponse.newBuilder()
+                    .setAvailable(available)
+                    .setInStock(stock.getAvailable())
                     .build());
 
-        } catch (DuplicateReservationException e) {
-            log.warn("gRPC checkAndReserve: duplicate reservation [orderId={}]", orderId);
-            responseObserver.onNext(ReserveResponse.newBuilder()
-                    .setSuccess(true)
-                    .build());
-
-        } catch (Exception e) {
-            log.warn("gRPC checkAndReserve failed [orderId={}]: {}", orderId, e.getMessage());
-            responseObserver.onNext(ReserveResponse.newBuilder()
-                    .setSuccess(false)
-                    .setReason(e.getMessage())
+        } catch (InventoryItemNotFoundException e) {
+            log.warn("gRPC checkStock: item not found [productId={}]", productId);
+            responseObserver.onNext(CheckStockResponse.newBuilder()
+                    .setAvailable(false)
+                    .setInStock(0)
                     .build());
         }
 

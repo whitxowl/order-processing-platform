@@ -297,14 +297,11 @@
                                 <exclude>com/whitxowl/inventoryservice/events/**</exclude>
                                 <exclude>com/whitxowl/orderservice/events/**</exclude>
                                 <!-- gRPC protobuf-generated classes (except GrpcInventoryService) -->
-                                <exclude>com/whitxowl/inventoryservice/grpc/InventoryProto.class</exclude>
-                                <exclude>com/whitxowl/inventoryservice/grpc/InventoryServiceGrpc*.class</exclude>
-                                <exclude>com/whitxowl/inventoryservice/grpc/CancelRequest*.class</exclude>
-                                <exclude>com/whitxowl/inventoryservice/grpc/CancelResponse*.class</exclude>
-                                <exclude>com/whitxowl/inventoryservice/grpc/ConfirmRequest*.class</exclude>
-                                <exclude>com/whitxowl/inventoryservice/grpc/ConfirmResponse*.class</exclude>
-                                <exclude>com/whitxowl/inventoryservice/grpc/ReserveRequest*.class</exclude>
-                                <exclude>com/whitxowl/inventoryservice/grpc/ReserveResponse*.class</exclude>
+                                <exclude>com/whitxowl/inventoryservice/grpc/Inventory*.class</exclude>
+                                <exclude>com/whitxowl/inventoryservice/grpc/Cancel*.class</exclude>
+                                <exclude>com/whitxowl/inventoryservice/grpc/Confirm*.class</exclude>
+                                <exclude>com/whitxowl/inventoryservice/grpc/Reserve*.class</exclude>
+                                <exclude>com/whitxowl/inventoryservice/grpc/CheckStock*.class</exclude>
                             </excludes>
                             <rules>
                                 <rule>

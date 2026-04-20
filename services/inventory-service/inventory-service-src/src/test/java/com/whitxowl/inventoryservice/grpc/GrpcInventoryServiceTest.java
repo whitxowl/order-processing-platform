@@ -1,7 +1,7 @@
 package com.whitxowl.inventoryservice.grpc;
 
-import com.whitxowl.inventoryservice.exception.DuplicateReservationException;
-import com.whitxowl.inventoryservice.exception.InsufficientStockException;
+import com.whitxowl.inventoryservice.api.dto.response.StockResponse;
+import com.whitxowl.inventoryservice.exception.InventoryItemNotFoundException;
 import com.whitxowl.inventoryservice.exception.ReservationNotFoundException;
 import com.whitxowl.inventoryservice.service.InventoryService;
 import io.grpc.stub.StreamObserver;
@@ -18,65 +18,62 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class GrpcInventoryServiceTest {
 
-    @Mock
-    private InventoryService inventoryService;
-
-    @Mock
-    private StreamObserver<ReserveResponse> reserveObserver;
-
-    @Mock
-    private StreamObserver<ConfirmResponse> confirmObserver;
-
-    @Mock
-    private StreamObserver<CancelResponse> cancelObserver;
+    @Mock private InventoryService inventoryService;
+    @Mock private StreamObserver<CheckStockResponse> checkObserver;
+    @Mock private StreamObserver<ConfirmResponse>    confirmObserver;
+    @Mock private StreamObserver<CancelResponse>     cancelObserver;
 
     @InjectMocks
     private GrpcInventoryService grpcService;
 
-    // ── checkAndReserve ───────────────────────────────────────────────────────
+    // ── checkStock ────────────────────────────────────────────────────────────
 
     @Test
-    void checkAndReserve_shouldReturnSuccess_whenReserved() {
-        ReserveRequest request = ReserveRequest.newBuilder()
-                .setOrderId("o1").setProductId("p1").setQuantity(3).build();
+    void checkStock_shouldReturnAvailableTrue_whenSufficientStock() {
+        CheckStockRequest request = CheckStockRequest.newBuilder()
+                .setProductId("p1").setQuantity(3).build();
+        when(inventoryService.getStock("p1")).thenReturn(
+                StockResponse.builder().productId("p1").quantity(10).reserved(2).available(8).build());
 
-        grpcService.checkAndReserve(request, reserveObserver);
+        grpcService.checkStock(request, checkObserver);
 
-        ArgumentCaptor<ReserveResponse> captor = ArgumentCaptor.forClass(ReserveResponse.class);
-        verify(reserveObserver).onNext(captor.capture());
-        verify(reserveObserver).onCompleted();
-        assertThat(captor.getValue().getSuccess()).isTrue();
+        ArgumentCaptor<CheckStockResponse> captor = ArgumentCaptor.forClass(CheckStockResponse.class);
+        verify(checkObserver).onNext(captor.capture());
+        verify(checkObserver).onCompleted();
+        assertThat(captor.getValue().getAvailable()).isTrue();
+        assertThat(captor.getValue().getInStock()).isEqualTo(8);
     }
 
     @Test
-    void checkAndReserve_shouldReturnSuccess_whenDuplicateReservation() {
-        ReserveRequest request = ReserveRequest.newBuilder()
-                .setOrderId("o1").setProductId("p1").setQuantity(3).build();
-        doThrow(new DuplicateReservationException("o1"))
-                .when(inventoryService).reserve("o1", "p1", 3);
+    void checkStock_shouldReturnAvailableFalse_whenInsufficientStock() {
+        CheckStockRequest request = CheckStockRequest.newBuilder()
+                .setProductId("p1").setQuantity(10).build();
+        when(inventoryService.getStock("p1")).thenReturn(
+                StockResponse.builder().productId("p1").quantity(5).reserved(3).available(2).build());
 
-        grpcService.checkAndReserve(request, reserveObserver);
+        grpcService.checkStock(request, checkObserver);
 
-        ArgumentCaptor<ReserveResponse> captor = ArgumentCaptor.forClass(ReserveResponse.class);
-        verify(reserveObserver).onNext(captor.capture());
-        verify(reserveObserver).onCompleted();
-        assertThat(captor.getValue().getSuccess()).isTrue();
+        ArgumentCaptor<CheckStockResponse> captor = ArgumentCaptor.forClass(CheckStockResponse.class);
+        verify(checkObserver).onNext(captor.capture());
+        verify(checkObserver).onCompleted();
+        assertThat(captor.getValue().getAvailable()).isFalse();
+        assertThat(captor.getValue().getInStock()).isEqualTo(2);
     }
 
     @Test
-    void checkAndReserve_shouldReturnFailure_whenInsufficientStock() {
-        ReserveRequest request = ReserveRequest.newBuilder()
-                .setOrderId("o1").setProductId("p1").setQuantity(100).build();
-        doThrow(new InsufficientStockException("p1", 100, 5))
-                .when(inventoryService).reserve("o1", "p1", 100);
+    void checkStock_shouldReturnUnavailable_whenItemNotFound() {
+        CheckStockRequest request = CheckStockRequest.newBuilder()
+                .setProductId("missing").setQuantity(1).build();
+        when(inventoryService.getStock("missing"))
+                .thenThrow(new InventoryItemNotFoundException("missing"));
 
-        grpcService.checkAndReserve(request, reserveObserver);
+        grpcService.checkStock(request, checkObserver);
 
-        ArgumentCaptor<ReserveResponse> captor = ArgumentCaptor.forClass(ReserveResponse.class);
-        verify(reserveObserver).onNext(captor.capture());
-        verify(reserveObserver).onCompleted();
-        assertThat(captor.getValue().getSuccess()).isFalse();
-        assertThat(captor.getValue().getReason()).isNotBlank();
+        ArgumentCaptor<CheckStockResponse> captor = ArgumentCaptor.forClass(CheckStockResponse.class);
+        verify(checkObserver).onNext(captor.capture());
+        verify(checkObserver).onCompleted();
+        assertThat(captor.getValue().getAvailable()).isFalse();
+        assertThat(captor.getValue().getInStock()).isZero();
     }
 
     // ── confirmReservation ────────────────────────────────────────────────────
@@ -118,6 +115,7 @@ class GrpcInventoryServiceTest {
 
         ArgumentCaptor<ConfirmResponse> captor = ArgumentCaptor.forClass(ConfirmResponse.class);
         verify(confirmObserver).onNext(captor.capture());
+        verify(confirmObserver).onCompleted();
         assertThat(captor.getValue().getSuccess()).isFalse();
     }
 
