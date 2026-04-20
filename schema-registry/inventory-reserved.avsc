@@ -1,0 +1,13 @@
+{
+  "namespace": "com.whitxowl.inventoryservice.events.inventory",
+  "type": "record",
+  "name": "InventoryReserved",
+  "fields": [
+    { "name": "orderId",    "type": "string" },
+    { "name": "productId",  "type": "string" },
+    { "name": "quantity",   "type": "int" },
+    { "name": "success",    "type": "boolean" },
+    { "name": "reason",     "type": ["null", "string"], "default": null },
+    { "name": "reservedAt", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

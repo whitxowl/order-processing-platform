@@ -1,0 +1,12 @@
+{
+  "namespace": "com.whitxowl.orderservice.events.order",
+  "type": "record",
+  "name": "OrderCreated",
+  "fields": [
+    { "name": "orderId",   "type": "string" },
+    { "name": "userId",    "type": "string" },
+    { "name": "productId", "type": "string" },
+    { "name": "quantity",  "type": "int" },
+    { "name": "createdAt", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}
