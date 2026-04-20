@@ -1,11 +1,21 @@
 spring:
+  application:
+    name: product-service-test
+
   data:
     mongodb:
-      host: localhost
-      port: 27017
-      database: testdb
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
-      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      uri: ${SPRING_DATA_MONGODB_URI}
+      auto-index-creation: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+app:
+  cleanup:
+    orphan-images-cron: "-"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
