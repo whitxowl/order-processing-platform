@@ -17,6 +17,8 @@ security:
   jwt:
     secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgc2VjcmV0IGtleSBmb3IgZGV2ZWxvcG1lbnQgb25seSEhIQ==}
     issuer: auth-service
+  internal:
+    secret: ${INTERNAL_SECRET:dev-internal-secret}
 
 management:
   endpoints:

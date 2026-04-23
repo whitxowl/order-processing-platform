@@ -5,8 +5,10 @@ CREATE TABLE inventory_items
     quantity   INTEGER      NOT NULL DEFAULT 0,
     reserved   INTEGER      NOT NULL DEFAULT 0,
     version    BIGINT       NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ  NOT NULL DEFAULT now(),
 
-    CONSTRAINT pk_inventory_items PRIMARY KEY (id),
+    CONSTRAINT pk_inventory_items          PRIMARY KEY (id),
     CONSTRAINT uq_inventory_items_product_id UNIQUE (product_id),
     CONSTRAINT chk_inventory_items_quantity  CHECK (quantity >= 0),
     CONSTRAINT chk_inventory_items_reserved  CHECK (reserved >= 0),

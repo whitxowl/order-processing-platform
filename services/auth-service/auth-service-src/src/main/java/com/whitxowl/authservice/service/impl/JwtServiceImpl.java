@@ -79,6 +79,11 @@ public class JwtServiceImpl implements JwtService {
     }
 
     @Override
+    public Duration getAccessTtl() {
+        return jwtProperties.getAccessTtl();
+    }
+
+    @Override
     public Duration getRefreshTtl() {
         return jwtProperties.getRefreshTtl();
     }

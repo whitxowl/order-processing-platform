@@ -95,7 +95,8 @@ class AuthControllerImplTest {
         TokenPairResponse response = TokenPairResponse.builder()
                 .accessToken("access")
                 .refreshToken("refresh")
-                .expiresIn(3600L)
+                .accessExpiresIn(900L)
+                .refreshExpiresIn(604800L)
                 .build();
 
         when(authService.login(any())).thenReturn(response);
@@ -107,7 +108,8 @@ class AuthControllerImplTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("access"))
                 .andExpect(jsonPath("$.refreshToken").value("refresh"))
-                .andExpect(jsonPath("$.expiresIn").value(3600));
+                .andExpect(jsonPath("$.accessExpiresIn").value(900))
+                .andExpect(jsonPath("$.refreshExpiresIn").value(604800));
     }
 
     @Test

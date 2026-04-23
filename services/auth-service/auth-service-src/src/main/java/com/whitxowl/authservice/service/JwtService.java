@@ -20,5 +20,7 @@ public interface JwtService {
 
     List<String> getRoles(Claims claims);
 
+    Duration getAccessTtl();
+
     Duration getRefreshTtl();
 }

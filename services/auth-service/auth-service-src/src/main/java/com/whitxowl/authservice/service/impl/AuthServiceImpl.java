@@ -79,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
 
         eventProducer.produce(user);
 
-        log.info("User registered: {}. Verification token: {}", user.getEmail(), verificationToken);
+        log.info("User registered: {}. Verification token hash: {}", user.getEmail(), TokenUtil.sha256(verificationToken));
 
         return userMapper.toUserResponse(user);
     }
@@ -170,7 +170,8 @@ public class AuthServiceImpl implements AuthService {
         return TokenPairResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(rawRefreshToken)
-                .expiresIn(jwtService.getRefreshTtl().toSeconds())
+                .accessExpiresIn(jwtService.getAccessTtl().toSeconds())
+                .refreshExpiresIn(jwtService.getRefreshTtl().toSeconds())
                 .build();
     }
 }

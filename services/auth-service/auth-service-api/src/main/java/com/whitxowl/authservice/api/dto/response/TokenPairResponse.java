@@ -11,5 +11,6 @@ public class TokenPairResponse {
 
     private String accessToken;
     private String refreshToken;
-    private long expiresIn;
+    private long accessExpiresIn;
+    private long refreshExpiresIn;
 }

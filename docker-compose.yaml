@@ -75,13 +75,10 @@ services:
       retries: 10
       start_period: 30s
 
-
   auth-service:
     build:
       context: .
       dockerfile: services/auth-service/Dockerfile
-    ports:
-      - "8081:8081"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=auth_service
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -108,8 +105,6 @@ services:
     build:
       context: .
       dockerfile: services/user-service/Dockerfile
-    ports:
-      - "8082:8082"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=user_service
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -125,8 +120,6 @@ services:
     build:
       context: .
       dockerfile: services/product-service/Dockerfile
-    ports:
-      - "8083:8083"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/product_db
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
@@ -140,9 +133,6 @@ services:
     build:
       context: .
       dockerfile: services/inventory-service/Dockerfile
-    ports:
-      - "8084:8084"
-      - "9094:9094"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=inventory_service
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -154,14 +144,17 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health | grep -q '\"status\":\"UP\"' || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   order-service:
     build:
       context: .
       dockerfile: services/order-service/Dockerfile
-    ports:
-      - "8085:8085"
-      - "9095:9095"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/platform?currentSchema=order_service
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -176,14 +169,12 @@ services:
       redpanda:
         condition: service_healthy
       inventory-service:
-        condition: service_started
+        condition: service_healthy
 
   notification-service:
     build:
       context: .
       dockerfile: services/notification-service/Dockerfile
-    ports:
-      - "8086:8086"
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/notification_db
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092

@@ -126,12 +126,15 @@ class AuthServiceImplTest {
 
         when(jwtService.generateAccessToken(any(), any(), any())).thenReturn("valid.access.token");
         when(jwtService.generateRefreshToken()).thenReturn("refresh-token-uuid");
+        when(jwtService.getAccessTtl()).thenReturn(java.time.Duration.ofMinutes(15));  // ← добавить
         when(jwtService.getRefreshTtl()).thenReturn(java.time.Duration.ofDays(7));
 
         TokenPairResponse response = authService.login(request);
 
         assertThat(response).isNotNull();
         assertThat(response.getAccessToken()).isEqualTo("valid.access.token");
+        assertThat(response.getAccessExpiresIn()).isEqualTo(900);      // ← добавить
+        assertThat(response.getRefreshExpiresIn()).isEqualTo(604800);  // ← добавить
         verify(refreshTokenRepository).save(any(RefreshTokenEntity.class));
     }
 
@@ -166,7 +169,7 @@ class AuthServiceImplTest {
 
         RefreshTokenEntity refreshToken = RefreshTokenEntity.builder()
                 .user(user)
-                .tokenHash("any-hash")           // не важно какое значение
+                .tokenHash("any-hash")
                 .expiresAt(Instant.now().plusSeconds(3600))
                 .revoked(false)
                 .build();
@@ -174,11 +177,14 @@ class AuthServiceImplTest {
         when(refreshTokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(refreshToken));
         when(jwtService.generateAccessToken(any(), any(), any())).thenReturn("new.access.token");
         when(jwtService.generateRefreshToken()).thenReturn("new-refresh-token");
+        when(jwtService.getAccessTtl()).thenReturn(java.time.Duration.ofMinutes(15));  // ← добавить
         when(jwtService.getRefreshTtl()).thenReturn(java.time.Duration.ofDays(7));
 
         TokenPairResponse response = authService.refresh(request);
 
         assertThat(response.getAccessToken()).isEqualTo("new.access.token");
+        assertThat(response.getAccessExpiresIn()).isEqualTo(900);      // ← добавить
+        assertThat(response.getRefreshExpiresIn()).isEqualTo(604800);  // ← добавить
         verify(refreshTokenRepository).save(any(RefreshTokenEntity.class));
     }
 
