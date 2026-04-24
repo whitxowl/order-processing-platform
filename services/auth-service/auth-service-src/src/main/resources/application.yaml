@@ -2,6 +2,50 @@ spring:
   application:
     name: auth-service
 
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/platform?currentSchema=auth_service}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: auth_service
+
+  flyway:
+    enabled: true
+    schemas: auth_service
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      client-id: auth-service-producer
+      acks: all
+      retries: 5
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8888}
+        auto.register.schemas: true
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgc2VjcmV0IGtleSBmb3IgZGV2ZWxvcG1lbnQgb25seSEhIQ==}
+    access-ttl: 15m
+    refresh-ttl: 7d
+    issuer: auth-service
+
+app:
+  kafka:
+    topics:
+      user-created: user.created
+
 server:
   port: 8081
 

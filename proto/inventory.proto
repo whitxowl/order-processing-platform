@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package inventory;
+
+option java_package = "com.whitxowl.inventoryservice.grpc";
+option java_outer_classname = "InventoryProto";
+option java_multiple_files = true;
+
+service InventoryService {
+
+  rpc CheckStock(CheckStockRequest) returns (CheckStockResponse);
+
+  rpc ConfirmReservation(ConfirmRequest) returns (ConfirmResponse);
+
+  rpc CancelReservation(CancelRequest) returns (CancelResponse);
+}
+
+// ── CheckStock ───────────────────────────────────────────────────────────────
+
+message CheckStockRequest {
+  string product_id = 1;
+  int32  quantity   = 2;
+}
+
+message CheckStockResponse {
+  bool  available = 1;
+  int32 in_stock  = 2;
+}
+
+// ── ConfirmReservation ───────────────────────────────────────────────────────
+
+message ConfirmRequest {
+  string order_id = 1;
+}
+
+message ConfirmResponse {
+  bool   success = 1;
+  string reason  = 2;
+}
+
+// ── CancelReservation ────────────────────────────────────────────────────────
+
+message CancelRequest {
+  string order_id = 1;
+}
+
+message CancelResponse {
+  bool   success = 1;
+  string reason  = 2;
+}
