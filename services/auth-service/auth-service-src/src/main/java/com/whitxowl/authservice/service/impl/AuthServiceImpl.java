@@ -156,6 +156,21 @@ public class AuthServiceImpl implements AuthService {
                 .ifPresent(token -> token.setRevoked(true));
     }
 
+    @Override
+    @Transactional
+    public void syncRoles(String userId, List<String> roles) {
+        UUID id = UUID.fromString(userId);
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        // Полностью заменяем роли — event содержит актуальный полный список
+        user.getRoles().clear();
+        roles.forEach(user::addRole);
+        userRepository.save(user);
+
+        log.info("Roles synced for userId={}: {}", userId, roles);
+    }
+
     private TokenPairResponse generateTokenPair(UUID userId, String email, List<String> roles) {
         String accessToken = jwtService.generateAccessToken(userId, email, roles);
         String rawRefreshToken = jwtService.generateRefreshToken();

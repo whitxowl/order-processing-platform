@@ -33,6 +33,17 @@ spring:
         auto.register.schemas: true
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+    consumer:
+      group-id: auth-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8888}
+        specific.avro.reader: true
+    listener:
+      ack-mode: manual
 
 security:
   jwt:
@@ -45,6 +56,7 @@ app:
   kafka:
     topics:
       user-created: user.created
+      user-role-changed: user.role-changed
 
 server:
   port: 8081

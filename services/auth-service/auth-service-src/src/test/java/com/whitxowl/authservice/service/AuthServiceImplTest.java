@@ -29,6 +29,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -231,5 +232,70 @@ class AuthServiceImplTest {
 
         verify(refreshTokenRepository, never()).save(any(RefreshTokenEntity.class));
         verify(refreshTokenRepository).findByTokenHash(anyString());
+    }
+
+    @Test
+    void syncRoles_shouldReplaceRolesAndSave_whenUserFound() {
+        UUID id = UUID.randomUUID();
+        UserEntity user = UserEntity.builder()
+                .id(id)
+                .email("user@example.com")
+                .build();
+        user.addRole("ROLE_USER");
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        authService.syncRoles(id.toString(), List.of("ROLE_USER", "ROLE_MANAGER"));
+
+        assertThat(user.getRoles()).extracting("role")
+                .containsExactlyInAnyOrder("ROLE_USER", "ROLE_MANAGER");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void syncRoles_shouldClearAllRoles_whenEmptyListReceived() {
+        UUID id = UUID.randomUUID();
+        UserEntity user = UserEntity.builder()
+                .id(id)
+                .email("user@example.com")
+                .build();
+        user.addRole("ROLE_USER");
+        user.addRole("ROLE_MANAGER");
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        authService.syncRoles(id.toString(), List.of());
+
+        assertThat(user.getRoles()).isEmpty();
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void syncRoles_shouldThrow_whenUserNotFound() {
+        UUID id = UUID.randomUUID();
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.syncRoles(id.toString(), List.of("ROLE_USER")))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining(id.toString());
+    }
+
+    @Test
+    void syncRoles_shouldReplaceExistingRoles_notAppend() {
+        UUID id = UUID.randomUUID();
+        UserEntity user = UserEntity.builder()
+                .id(id)
+                .email("user@example.com")
+                .build();
+        user.addRole("ROLE_ADMIN");
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        authService.syncRoles(id.toString(), List.of("ROLE_USER"));
+
+        assertThat(user.getRoles()).extracting("role")
+                .containsExactly("ROLE_USER")
+                .doesNotContain("ROLE_ADMIN");
+        verify(userRepository).save(user);
     }
 }

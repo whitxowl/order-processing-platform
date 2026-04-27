@@ -39,7 +39,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
-class UserCreatedEventProducerTest {
+class UserCreatedEventProducerImplTest {
 
     private static final String TOPIC = "user.created";
     private static final TopicPartition PARTITION = new TopicPartition(TOPIC, 0);

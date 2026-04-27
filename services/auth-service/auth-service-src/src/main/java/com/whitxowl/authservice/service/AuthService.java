@@ -18,4 +18,6 @@ public interface AuthService {
     void verify(VerifyEmailRequest request);
 
     void logout(RefreshRequest request);
+
+    void syncRoles(String userId, java.util.List<String> roles);
 }
