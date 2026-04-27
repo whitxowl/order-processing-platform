@@ -2,112 +2,177 @@ package com.whitxowl.inventoryservice.kafka;
 
 import com.whitxowl.inventoryservice.events.inventory.InventoryReserved;
 import com.whitxowl.inventoryservice.kafka.producer.impl.InventoryReservedEventProducerImpl;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
-import java.util.concurrent.CompletableFuture;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
+@Testcontainers
 class InventoryReservedEventProducerImplTest {
 
-    @Mock
+    private static final String TOPIC = "inventory.reserved";
+    private static final TopicPartition PARTITION = new TopicPartition(TOPIC, 0);
+
+    static final Network network = Network.newNetwork();
+
+    @Container
+    static final KafkaContainer kafka = new KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.6.0"))
+            .withNetwork(network)
+            .withNetworkAliases("kafka");
+
+    @Container
+    static final GenericContainer<?> schemaRegistry = new GenericContainer<>(
+            DockerImageName.parse("confluentinc/cp-schema-registry:7.6.0"))
+            .withNetwork(network)
+            .withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
+            .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "kafka:9092")
+            .withExposedPorts(8081)
+            .waitingFor(Wait.forHttp("/subjects").forStatusCode(200))
+            .dependsOn(kafka);
+
     private KafkaTemplate<String, Object> kafkaTemplate;
-
-    @InjectMocks
+    private KafkaConsumer<String, Object> consumer;
     private InventoryReservedEventProducerImpl producer;
-
-    private final String topic = "inventory.reserved";
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(producer, "inventoryReservedTopic", topic);
+        String bootstrapServers = kafka.getBootstrapServers();
+        String schemaRegistryUrl = "http://" + schemaRegistry.getHost()
+                + ":" + schemaRegistry.getMappedPort(8081);
+
+        Map<String, Object> producerProps = Map.of(
+                ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
+                ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class,
+                KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl,
+                ProducerConfig.ACKS_CONFIG, "all"
+        );
+        kafkaTemplate = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(producerProps));
+
+        Map<String, Object> consumerProps = Map.of(
+                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,
+                ConsumerConfig.GROUP_ID_CONFIG, "test-group-" + UUID.randomUUID(),
+                ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class,
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class,
+                KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl,
+                KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true,
+                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"
+        );
+        consumer = new KafkaConsumer<>(consumerProps);
+        consumer.assign(Collections.singletonList(PARTITION));
+
+        producer = new InventoryReservedEventProducerImpl(kafkaTemplate);
+        ReflectionTestUtils.setField(producer, "inventoryReservedTopic", TOPIC);
+    }
+
+    @AfterEach
+    void tearDown() {
+        consumer.close();
     }
 
     @Test
-    void produceSuccess_shouldSendEventWithSuccessTrue_whenNoTransaction() {
-        when(kafkaTemplate.send(eq(topic), eq("o1"), any()))
-                .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
+    void produceSuccess_shouldDeliverSuccessEvent_withCorrectContent() {
+        long offsetBefore = endOffset();
 
-        try (MockedStatic<TransactionSynchronizationManager> mocked =
-                     mockStatic(TransactionSynchronizationManager.class)) {
-            mocked.when(TransactionSynchronizationManager::isSynchronizationActive)
-                    .thenReturn(false);
+        producer.produceSuccess("order-1", "product-1", 3);
+        kafkaTemplate.flush();
 
-            producer.produceSuccess("o1", "p1", 3);
+        InventoryReserved received = pollFrom(offsetBefore);
 
-            ArgumentCaptor<InventoryReserved> captor =
-                    ArgumentCaptor.forClass(InventoryReserved.class);
-            verify(kafkaTemplate).send(eq(topic), eq("o1"), captor.capture());
-
-            InventoryReserved event = captor.getValue();
-            assertThat(event.getOrderId()).isEqualTo("o1");
-            assertThat(event.getProductId()).isEqualTo("p1");
-            assertThat(event.getQuantity()).isEqualTo(3);
-            assertThat(event.getSuccess()).isTrue();
-            assertThat(event.getReason()).isNull();
-        }
+        assertThat(received.getOrderId()).isEqualTo("order-1");
+        assertThat(received.getProductId()).isEqualTo("product-1");
+        assertThat(received.getQuantity()).isEqualTo(3);
+        assertThat(received.getSuccess()).isTrue();
+        assertThat(received.getReason()).isNull();
     }
 
     @Test
-    void produceFailure_shouldSendEventWithSuccessFalseAndReason_whenNoTransaction() {
-        when(kafkaTemplate.send(eq(topic), eq("o1"), any()))
-                .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
+    void produceFailure_shouldDeliverFailureEvent_withReason() {
+        long offsetBefore = endOffset();
 
-        try (MockedStatic<TransactionSynchronizationManager> mocked =
-                     mockStatic(TransactionSynchronizationManager.class)) {
-            mocked.when(TransactionSynchronizationManager::isSynchronizationActive)
-                    .thenReturn(false);
+        producer.produceFailure("order-2", "product-2", 5, "Insufficient stock");
+        kafkaTemplate.flush();
 
-            producer.produceFailure("o1", "p1", 3, "Insufficient stock");
+        InventoryReserved received = pollFrom(offsetBefore);
 
-            ArgumentCaptor<InventoryReserved> captor =
-                    ArgumentCaptor.forClass(InventoryReserved.class);
-            verify(kafkaTemplate).send(eq(topic), eq("o1"), captor.capture());
-
-            InventoryReserved event = captor.getValue();
-            assertThat(event.getSuccess()).isFalse();
-            assertThat(event.getReason()).isEqualTo("Insufficient stock");
-        }
+        assertThat(received.getOrderId()).isEqualTo("order-2");
+        assertThat(received.getProductId()).isEqualTo("product-2");
+        assertThat(received.getQuantity()).isEqualTo(5);
+        assertThat(received.getSuccess()).isFalse();
+        assertThat(received.getReason()).isEqualTo("Insufficient stock");
     }
 
     @Test
-    void produceSuccess_shouldRegisterSynchronization_whenTransactionActive() {
-        try (MockedStatic<TransactionSynchronizationManager> mocked =
-                     mockStatic(TransactionSynchronizationManager.class)) {
-            mocked.when(TransactionSynchronizationManager::isSynchronizationActive)
-                    .thenReturn(true);
+    void produceSuccess_shouldUseOrderIdAsMessageKey() {
+        long offsetBefore = endOffset();
 
-            producer.produceSuccess("o1", "p1", 3);
+        producer.produceSuccess("order-3", "product-3", 1);
+        kafkaTemplate.flush();
 
-            verify(kafkaTemplate, never()).send(any(), any(), any());
+        ConsumerRecord<String, Object> record = pollRecordFrom(offsetBefore);
 
-            ArgumentCaptor<TransactionSynchronization> syncCaptor =
-                    ArgumentCaptor.forClass(TransactionSynchronization.class);
-            mocked.verify(() ->
-                    TransactionSynchronizationManager.registerSynchronization(syncCaptor.capture()));
+        assertThat(record.key()).isEqualTo("order-3");
+    }
 
-            when(kafkaTemplate.send(any(), any(), any()))
-                    .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
+    @Test
+    void produceFailure_shouldUseOrderIdAsMessageKey() {
+        long offsetBefore = endOffset();
 
-            syncCaptor.getValue().afterCommit();
+        producer.produceFailure("order-4", "product-4", 2, "Out of stock");
+        kafkaTemplate.flush();
 
-            verify(kafkaTemplate).send(eq(topic), eq("o1"), any(InventoryReserved.class));
+        ConsumerRecord<String, Object> record = pollRecordFrom(offsetBefore);
+
+        assertThat(record.key()).isEqualTo("order-4");
+    }
+
+    private long endOffset() {
+        return consumer.endOffsets(Collections.singletonList(PARTITION))
+                .getOrDefault(PARTITION, 0L);
+    }
+
+    private InventoryReserved pollFrom(long fromOffset) {
+        return (InventoryReserved) pollRecordFrom(fromOffset).value();
+    }
+
+    private ConsumerRecord<String, Object> pollRecordFrom(long fromOffset) {
+        consumer.seek(PARTITION, fromOffset);
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (System.currentTimeMillis() < deadline) {
+            ConsumerRecords<String, Object> records = consumer.poll(Duration.ofMillis(500));
+            for (ConsumerRecord<String, Object> record : records) {
+                return record;
+            }
         }
+        throw new AssertionError("No message received from Kafka within timeout");
     }
 }
