@@ -163,7 +163,6 @@ public class AuthServiceImpl implements AuthService {
         UserEntity user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        // Полностью заменяем роли — event содержит актуальный полный список
         user.getRoles().clear();
         roles.forEach(user::addRole);
         userRepository.save(user);
