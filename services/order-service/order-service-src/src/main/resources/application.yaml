@@ -2,8 +2,68 @@ spring:
   application:
     name: order-service
 
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/platform?currentSchema=order_service}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+
+  flyway:
+    enabled: true
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      group-id: order-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8888}
+        specific.avro.reader: true
+
+    producer:
+      client-id: order-service-producer
+      acks: all
+      retries: 5
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8888}
+        auto.register.schemas: true
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+
+grpc:
+  client:
+    inventory-service:
+      address: ${GRPC_INVENTORY_SERVICE_ADDRESS:static://localhost:9094}
+      negotiation-type: plaintext
+
+app:
+  kafka:
+    topics:
+      order-created: order.created
+      inventory-reserved: inventory.reserved
+      order-status-changed: order.status-changed
+
 server:
   port: 8085
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
 
 management:
   endpoints:
