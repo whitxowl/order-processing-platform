@@ -2,7 +2,6 @@ package com.whitxowl.productservice.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whitxowl.productservice.api.dto.request.CreateProductRequest;
-import com.whitxowl.productservice.api.dto.response.ProductResponse;
 import com.whitxowl.productservice.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

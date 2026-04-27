@@ -11,7 +11,6 @@ import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -22,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataMongoTest
 @Import({TestConfig.class, MongoConfig.class})
-@ActiveProfiles("test")
 class ProductRepositoryTest {
 
     @Autowired
