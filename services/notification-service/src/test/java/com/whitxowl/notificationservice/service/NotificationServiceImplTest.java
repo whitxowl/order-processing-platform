@@ -1,7 +1,6 @@
 package com.whitxowl.notificationservice.service;
 
 import com.whitxowl.authservice.events.auth.UserCreated;
-import com.whitxowl.inventoryservice.events.inventory.InventoryReserved;
 import com.whitxowl.notificationservice.domain.NotificationStatus;
 import com.whitxowl.notificationservice.domain.NotificationType;
 import com.whitxowl.notificationservice.domain.document.NotificationDocument;
@@ -10,6 +9,7 @@ import com.whitxowl.notificationservice.repository.NotificationRepository;
 import com.whitxowl.notificationservice.repository.UserEmailCacheRepository;
 import com.whitxowl.notificationservice.service.impl.NotificationServiceImpl;
 import com.whitxowl.orderservice.events.order.OrderCreated;
+import com.whitxowl.orderservice.events.order.OrderStatusChanged;
 import com.whitxowl.userservice.events.user.UserRoleChanged;
 import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
@@ -279,64 +279,62 @@ class NotificationServiceImplTest {
         verifyNoInteractions(userEmailCacheRepository);
     }
 
-    // ── sendInventoryReserved (success) ───────────────────────────────────────
+    // ── sendOrderStatusChanged ────────────────────────────────────────────────
 
     @Test
-    void sendInventoryReserved_shouldSendReservedNotification_whenSuccessTrue() throws Exception {
+    void sendOrderStatusChanged_shouldSendReservedNotification_whenStatusReserved() throws Exception {
         String orderId = "ord-1";
-        InventoryReserved event = InventoryReserved.newBuilder()
+        String userId = "user-1";
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
                 .setOrderId(orderId)
+                .setUserId(userId)
                 .setProductId("prod-1")
                 .setQuantity(3)
-                .setSuccess(true)
-                .setReason(null)
-                .setReservedAt(Instant.now())
+                .setStatus("RESERVED")
+                .setChangedAt(Instant.now())
                 .build();
 
         when(notificationRepository.existsByReferenceIdAndType(orderId, NotificationType.ORDER_RESERVED))
                 .thenReturn(false);
-        NotificationDocument orderCreatedDoc = NotificationDocument.builder()
-                .referenceId(orderId).type(NotificationType.ORDER_CREATED)
-                .recipientEmail("buyer@example.com").build();
-        when(notificationRepository.findByReferenceIdAndType(orderId, NotificationType.ORDER_CREATED))
-                .thenReturn(Optional.of(orderCreatedDoc));
-        when(templateEngine.process(eq("order-reserved"), any(Context.class))).thenReturn("<html/>");
+        when(userEmailCacheRepository.findByUserId(userId))
+                .thenReturn(Optional.of(UserEmailCacheDocument.builder().userId(userId).email("buyer@example.com").build()));
+        when(templateEngine.process(eq("order-status-changed"), any(Context.class))).thenReturn("<html/>");
         MimeMessage mimeMessage = mock(MimeMessage.class);
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
-        service.sendInventoryReserved(event);
+        service.sendOrderStatusChanged(event);
 
         verify(mailSender).send(mimeMessage);
         ArgumentCaptor<NotificationDocument> captor = ArgumentCaptor.forClass(NotificationDocument.class);
         verify(notificationRepository).save(captor.capture());
-        assertThat(captor.getValue().getType()).isEqualTo(NotificationType.ORDER_RESERVED);
-        assertThat(captor.getValue().getStatus()).isEqualTo(NotificationStatus.SENT);
+        NotificationDocument saved = captor.getValue();
+        assertThat(saved.getType()).isEqualTo(NotificationType.ORDER_RESERVED);
+        assertThat(saved.getStatus()).isEqualTo(NotificationStatus.SENT);
+        assertThat(saved.getReferenceId()).isEqualTo(orderId);
     }
 
     @Test
-    void sendInventoryReserved_shouldSendCancelledNotification_whenSuccessFalse() throws Exception {
+    void sendOrderStatusChanged_shouldSendCancelledNotification_whenStatusCancelled() throws Exception {
         String orderId = "ord-1";
-        InventoryReserved event = InventoryReserved.newBuilder()
+        String userId = "user-1";
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
                 .setOrderId(orderId)
+                .setUserId(userId)
                 .setProductId("prod-1")
                 .setQuantity(3)
-                .setSuccess(false)
-                .setReason("out of stock")
-                .setReservedAt(Instant.now())
+                .setStatus("CANCELLED")
+                .setChangedAt(Instant.now())
                 .build();
 
         when(notificationRepository.existsByReferenceIdAndType(orderId, NotificationType.ORDER_CANCELLED))
                 .thenReturn(false);
-        NotificationDocument orderCreatedDoc = NotificationDocument.builder()
-                .referenceId(orderId).type(NotificationType.ORDER_CREATED)
-                .recipientEmail("buyer@example.com").build();
-        when(notificationRepository.findByReferenceIdAndType(orderId, NotificationType.ORDER_CREATED))
-                .thenReturn(Optional.of(orderCreatedDoc));
-        when(templateEngine.process(eq("order-cancelled"), any(Context.class))).thenReturn("<html/>");
+        when(userEmailCacheRepository.findByUserId(userId))
+                .thenReturn(Optional.of(UserEmailCacheDocument.builder().userId(userId).email("buyer@example.com").build()));
+        when(templateEngine.process(eq("order-status-changed"), any(Context.class))).thenReturn("<html/>");
         MimeMessage mimeMessage = mock(MimeMessage.class);
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
-        service.sendInventoryReserved(event);
+        service.sendOrderStatusChanged(event);
 
         verify(mailSender).send(mimeMessage);
         ArgumentCaptor<NotificationDocument> captor = ArgumentCaptor.forClass(NotificationDocument.class);
@@ -346,76 +344,94 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void sendInventoryReserved_shouldUseFallbackReason_whenReasonIsNull() throws Exception {
-        String orderId = "ord-1";
-        InventoryReserved event = InventoryReserved.newBuilder()
-                .setOrderId(orderId)
+    void sendOrderStatusChanged_shouldSkipSend_whenStatusUnknown() {
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
+                .setOrderId("ord-1")
+                .setUserId("user-1")
                 .setProductId("prod-1")
                 .setQuantity(1)
-                .setSuccess(false)
-                .setReason(null)
-                .setReservedAt(Instant.now())
+                .setStatus("SHIPPED")
+                .setChangedAt(Instant.now())
                 .build();
 
-        when(notificationRepository.existsByReferenceIdAndType(orderId, NotificationType.ORDER_CANCELLED))
-                .thenReturn(false);
-        NotificationDocument orderCreatedDoc = NotificationDocument.builder()
-                .referenceId(orderId).type(NotificationType.ORDER_CREATED)
-                .recipientEmail("buyer@example.com").build();
-        when(notificationRepository.findByReferenceIdAndType(orderId, NotificationType.ORDER_CREATED))
-                .thenReturn(Optional.of(orderCreatedDoc));
-        when(templateEngine.process(anyString(), any(Context.class))).thenReturn("<html/>");
-        MimeMessage mimeMessage = mock(MimeMessage.class);
-        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        service.sendOrderStatusChanged(event);
 
-        service.sendInventoryReserved(event);
-
-        ArgumentCaptor<Context> ctxCaptor = ArgumentCaptor.forClass(Context.class);
-        verify(templateEngine).process(anyString(), ctxCaptor.capture());
-        assertThat(ctxCaptor.getValue().getVariable("reason")).isEqualTo("Товар недоступен");
+        verifyNoInteractions(mailSender);
+        verifyNoInteractions(notificationRepository);
+        verifyNoInteractions(userEmailCacheRepository);
     }
 
     @Test
-    void sendInventoryReserved_shouldSkipSend_whenEmailNotFoundInRepository() {
-        String orderId = "ord-orphan";
-        InventoryReserved event = InventoryReserved.newBuilder()
+    void sendOrderStatusChanged_shouldSkipSend_whenAlreadySent() {
+        String orderId = "ord-dup";
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
                 .setOrderId(orderId)
+                .setUserId("user-1")
                 .setProductId("prod-1")
                 .setQuantity(1)
-                .setSuccess(true)
-                .setReason(null)
-                .setReservedAt(Instant.now())
+                .setStatus("RESERVED")
+                .setChangedAt(Instant.now())
+                .build();
+
+        when(notificationRepository.existsByReferenceIdAndType(orderId, NotificationType.ORDER_RESERVED))
+                .thenReturn(true);
+
+        service.sendOrderStatusChanged(event);
+
+        verifyNoInteractions(mailSender);
+        verifyNoInteractions(userEmailCacheRepository);
+    }
+
+    @Test
+    void sendOrderStatusChanged_shouldSkipSend_whenEmailNotFoundInCache() {
+        String orderId = "ord-1";
+        String userId = "user-unknown";
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
+                .setOrderId(orderId)
+                .setUserId(userId)
+                .setProductId("prod-1")
+                .setQuantity(1)
+                .setStatus("RESERVED")
+                .setChangedAt(Instant.now())
                 .build();
 
         when(notificationRepository.existsByReferenceIdAndType(orderId, NotificationType.ORDER_RESERVED))
                 .thenReturn(false);
-        when(notificationRepository.findByReferenceIdAndType(orderId, NotificationType.ORDER_CREATED))
-                .thenReturn(Optional.empty());
+        when(userEmailCacheRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
-        service.sendInventoryReserved(event);
+        service.sendOrderStatusChanged(event);
 
         verifyNoInteractions(mailSender);
         verify(notificationRepository, never()).save(any());
     }
 
     @Test
-    void sendInventoryReserved_shouldSkipSend_whenAlreadySent() {
-        String orderId = "ord-dup";
-        InventoryReserved event = InventoryReserved.newBuilder()
+    void sendOrderStatusChanged_shouldSaveFailedNotification_whenMailThrows() throws Exception {
+        String orderId = "ord-1";
+        String userId = "user-1";
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
                 .setOrderId(orderId)
+                .setUserId(userId)
                 .setProductId("prod-1")
                 .setQuantity(1)
-                .setSuccess(true)
-                .setReason(null)
-                .setReservedAt(Instant.now())
+                .setStatus("RESERVED")
+                .setChangedAt(Instant.now())
                 .build();
 
         when(notificationRepository.existsByReferenceIdAndType(orderId, NotificationType.ORDER_RESERVED))
-                .thenReturn(true);
+                .thenReturn(false);
+        when(userEmailCacheRepository.findByUserId(userId))
+                .thenReturn(Optional.of(UserEmailCacheDocument.builder().userId(userId).email("buyer@example.com").build()));
+        when(templateEngine.process(anyString(), any(Context.class))).thenReturn("<html/>");
+        MimeMessage mimeMessage = mock(MimeMessage.class);
+        when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+        doThrow(new RuntimeException("SMTP error")).when(mailSender).send(any(MimeMessage.class));
 
-        service.sendInventoryReserved(event);
+        service.sendOrderStatusChanged(event);
 
-        verifyNoInteractions(mailSender);
-        verify(notificationRepository, never()).findByReferenceIdAndType(any(), any());
+        ArgumentCaptor<NotificationDocument> captor = ArgumentCaptor.forClass(NotificationDocument.class);
+        verify(notificationRepository).save(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(NotificationStatus.FAILED);
+        assertThat(captor.getValue().getFailureReason()).contains("SMTP error");
     }
 }

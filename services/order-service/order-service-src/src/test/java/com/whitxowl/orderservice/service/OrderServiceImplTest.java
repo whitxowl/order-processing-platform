@@ -9,6 +9,7 @@ import com.whitxowl.orderservice.exception.OrderNotFoundException;
 import com.whitxowl.orderservice.exception.OrderOwnershipException;
 import com.whitxowl.orderservice.grpc.GrpcInventoryClient;
 import com.whitxowl.orderservice.kafka.producer.OrderCreatedEventProducer;
+import com.whitxowl.orderservice.kafka.producer.OrderStatusChangedEventProducer;
 import com.whitxowl.orderservice.mapper.OrderMapper;
 import com.whitxowl.orderservice.repository.OrderRepository;
 import com.whitxowl.orderservice.service.impl.OrderServiceImpl;
@@ -27,6 +28,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +44,10 @@ class OrderServiceImplTest {
     private GrpcInventoryClient grpcInventoryClient;
 
     @Mock
-    private OrderCreatedEventProducer  orderCreatedEventProducer;
+    private OrderCreatedEventProducer orderCreatedEventProducer;
+
+    @Mock
+    private OrderStatusChangedEventProducer orderStatusChangedEventProducer;
 
     @InjectMocks
     private OrderServiceImpl service;
@@ -64,6 +69,7 @@ class OrderServiceImplTest {
         verify(orderRepository).save(any());
         verify(orderCreatedEventProducer).produce(
                 saved.getId().toString(), "user-1", "product-1", 3);
+        verifyNoInteractions(orderStatusChangedEventProducer);
     }
 
     @Test
@@ -78,6 +84,7 @@ class OrderServiceImplTest {
 
         verifyNoInteractions(orderRepository);
         verifyNoInteractions(orderCreatedEventProducer);
+        verifyNoInteractions(orderStatusChangedEventProducer);
     }
 
     @Test
@@ -94,6 +101,7 @@ class OrderServiceImplTest {
 
         assertThat(response.getStatus()).isEqualTo(OrderStatus.NEW);
         verify(orderRepository).save(any());
+        verifyNoInteractions(orderStatusChangedEventProducer);
     }
 
     // ── getOrder ──────────────────────────────────────────────────────────────
@@ -159,6 +167,8 @@ class OrderServiceImplTest {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         verifyNoInteractions(grpcInventoryClient);
+        verify(orderStatusChangedEventProducer).produce(
+                id.toString(), "user-1", "product-1", 2, "CANCELLED");
     }
 
     @Test
@@ -174,6 +184,8 @@ class OrderServiceImplTest {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         verify(grpcInventoryClient).cancelReservation(id.toString());
+        verify(orderStatusChangedEventProducer).produce(
+                id.toString(), "user-1", "product-1", 2, "CANCELLED");
     }
 
     @Test
@@ -188,6 +200,7 @@ class OrderServiceImplTest {
 
         verify(orderRepository, never()).save(any());
         verifyNoInteractions(grpcInventoryClient);
+        verifyNoInteractions(orderStatusChangedEventProducer);
     }
 
     @Test
@@ -199,6 +212,8 @@ class OrderServiceImplTest {
 
         assertThatThrownBy(() -> service.cancelOrder(id, "user-1", false))
                 .isInstanceOf(OrderCancellationNotAllowedException.class);
+
+        verifyNoInteractions(orderStatusChangedEventProducer);
     }
 
     @Test
@@ -210,6 +225,8 @@ class OrderServiceImplTest {
 
         assertThatThrownBy(() -> service.cancelOrder(id, "user-2", false))
                 .isInstanceOf(OrderOwnershipException.class);
+
+        verifyNoInteractions(orderStatusChangedEventProducer);
     }
 
     @Test
@@ -224,6 +241,8 @@ class OrderServiceImplTest {
         service.cancelOrder(id, "manager-1", true);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        verify(orderStatusChangedEventProducer).produce(
+                id.toString(), "user-1", "product-1", 2, "CANCELLED");
     }
 
     // ── handleInventoryReserved ───────────────────────────────────────────────
@@ -239,6 +258,8 @@ class OrderServiceImplTest {
         service.handleInventoryReserved(id.toString(), true, null);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.RESERVED);
+        verify(orderStatusChangedEventProducer).produce(
+                id.toString(), "user-1", "product-1", 2, "RESERVED");
     }
 
     @Test
@@ -252,6 +273,8 @@ class OrderServiceImplTest {
         service.handleInventoryReserved(id.toString(), false, "Insufficient stock");
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        verify(orderStatusChangedEventProducer).produce(
+                id.toString(), "user-1", "product-1", 2, "CANCELLED");
     }
 
     @Test
@@ -264,6 +287,7 @@ class OrderServiceImplTest {
         service.handleInventoryReserved(id.toString(), true, null);
 
         verify(orderRepository, never()).save(any());
+        verifyNoInteractions(orderStatusChangedEventProducer);
     }
 
     // ── getMyOrders / getAllOrders ─────────────────────────────────────────────

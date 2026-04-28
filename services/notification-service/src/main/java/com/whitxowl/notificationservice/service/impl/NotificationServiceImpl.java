@@ -1,7 +1,6 @@
 package com.whitxowl.notificationservice.service.impl;
 
 import com.whitxowl.authservice.events.auth.UserCreated;
-import com.whitxowl.inventoryservice.events.inventory.InventoryReserved;
 import com.whitxowl.notificationservice.domain.NotificationStatus;
 import com.whitxowl.notificationservice.domain.NotificationType;
 import com.whitxowl.notificationservice.domain.document.NotificationDocument;
@@ -11,6 +10,7 @@ import com.whitxowl.notificationservice.repository.UserEmailCacheRepository;
 import com.whitxowl.notificationservice.service.NotificationService;
 import com.whitxowl.orderservice.events.order.OrderCreated;
 import com.whitxowl.userservice.events.user.UserRoleChanged;
+import com.whitxowl.orderservice.events.order.OrderStatusChanged;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -117,28 +117,32 @@ public class NotificationServiceImpl implements NotificationService {
                 "Заказ %s принят".formatted(orderId), "order-created", ctx);
     }
 
-    // ── inventory.reserved ────────────────────────────────────────────────────
+    // ── order.status-changed ──────────────────────────────────────────────────
 
     @Override
-    public void sendInventoryReserved(InventoryReserved event) {
-        String orderId  = event.getOrderId();
-        boolean success = event.getSuccess();
+    public void sendOrderStatusChanged(OrderStatusChanged event) {
+        String orderId = event.getOrderId();
+        String status  = event.getStatus();
 
-        NotificationType type = success
-                ? NotificationType.ORDER_RESERVED
-                : NotificationType.ORDER_CANCELLED;
+        NotificationType type = switch (status) {
+            case "RESERVED"  -> NotificationType.ORDER_RESERVED;
+            case "CANCELLED" -> NotificationType.ORDER_CANCELLED;
+            default -> {
+                log.warn("Unhandled order status [orderId={}, status={}], skipping", orderId, status);
+                yield null;
+            }
+        };
 
-        if (isAlreadySent(orderId, type)) {
-            return;
-        }
+        if (type == null) return;
 
-        String email = notificationRepository
-                .findByReferenceIdAndType(orderId, NotificationType.ORDER_CREATED)
-                .map(NotificationDocument::getRecipientEmail)
+        if (isAlreadySent(orderId, type)) return;
+
+        String email = userEmailCacheRepository.findByUserId(event.getUserId())
+                .map(UserEmailCacheDocument::getEmail)
                 .orElse(null);
 
         if (email == null) {
-            log.warn("Cannot resolve email for orderId={}, skipping {} notification", orderId, type);
+            log.warn("Email not found for userId={}, skipping {} notification", event.getUserId(), type);
             return;
         }
 
@@ -146,19 +150,15 @@ public class NotificationServiceImpl implements NotificationService {
         ctx.setVariable("orderId",   orderId);
         ctx.setVariable("productId", event.getProductId());
         ctx.setVariable("quantity",  event.getQuantity());
+        ctx.setVariable("status",    status);
 
-        if (!success) {
-            ctx.setVariable("reason", event.getReason() != null
-                    ? event.getReason()
-                    : "Товар недоступен");
-        }
+        String subject = switch (status) {
+            case "RESERVED"  -> "Заказ %s подтверждён".formatted(orderId);
+            case "CANCELLED" -> "Заказ %s отменён".formatted(orderId);
+            default          -> "Статус заказа %s изменён".formatted(orderId);
+        };
 
-        String subject  = success
-                ? "Заказ %s подтверждён".formatted(orderId)
-                : "Заказ %s отменён".formatted(orderId);
-        String template = success ? "order-reserved" : "order-cancelled";
-
-        send(email, orderId, type, subject, template, ctx);
+        send(email, orderId, type, subject, "order-status-changed", ctx);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

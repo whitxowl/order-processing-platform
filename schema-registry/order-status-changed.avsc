@@ -1,0 +1,13 @@
+{
+  "namespace": "com.whitxowl.orderservice.events.order",
+  "type": "record",
+  "name": "OrderStatusChanged",
+  "fields": [
+    { "name": "orderId",    "type": "string" },
+    { "name": "userId",     "type": "string" },
+    { "name": "productId",  "type": "string" },
+    { "name": "quantity",   "type": "int" },
+    { "name": "status",     "type": "string" },
+    { "name": "changedAt",  "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

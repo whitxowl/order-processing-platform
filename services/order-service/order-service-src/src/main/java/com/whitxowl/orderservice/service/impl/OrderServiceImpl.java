@@ -10,6 +10,7 @@ import com.whitxowl.orderservice.exception.OrderNotFoundException;
 import com.whitxowl.orderservice.exception.OrderOwnershipException;
 import com.whitxowl.orderservice.grpc.GrpcInventoryClient;
 import com.whitxowl.orderservice.kafka.producer.OrderCreatedEventProducer;
+import com.whitxowl.orderservice.kafka.producer.OrderStatusChangedEventProducer;
 import com.whitxowl.orderservice.mapper.OrderMapper;
 import com.whitxowl.orderservice.repository.OrderRepository;
 import com.whitxowl.orderservice.service.OrderService;
@@ -36,6 +37,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper                orderMapper;
     private final GrpcInventoryClient        grpcInventoryClient;
     private final OrderCreatedEventProducer  orderCreatedEventProducer;
+    private final OrderStatusChangedEventProducer orderStatusChangedEventProducer;
 
     @Override
     @Transactional
@@ -121,6 +123,10 @@ public class OrderServiceImpl implements OrderService {
         OrderEntity saved = orderRepository.save(order);
         log.info("Order cancelled [orderId={}, cancelledBy={}]", orderId, userId);
 
+        orderStatusChangedEventProducer.produce(
+                orderId.toString(), saved.getUserId(), saved.getProductId(),
+                saved.getQuantity(), OrderStatus.CANCELLED.name());
+
         return orderMapper.toOrderResponse(saved);
     }
 
@@ -154,6 +160,10 @@ public class OrderServiceImpl implements OrderService {
         }
 
         orderRepository.save(order);
+
+        orderStatusChangedEventProducer.produce(
+                orderId, order.getUserId(), order.getProductId(),
+                order.getQuantity(), order.getStatus().name());
     }
 
     private OrderEntity findById(UUID orderId) {
