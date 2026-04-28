@@ -1,6 +1,7 @@
 package com.whitxowl.authservice.kafka.producer.impl;
 
 import com.whitxowl.authservice.domain.entity.UserEntity;
+import com.whitxowl.authservice.events.auth.UserCreated;
 import com.whitxowl.authservice.kafka.producer.UserCreatedEventProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,7 +10,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import com.whitxowl.authservice.events.auth.UserCreated;
 
 import java.time.Instant;
 import java.util.stream.Collectors;
@@ -25,13 +25,14 @@ public class UserCreatedEventProducerImpl implements UserCreatedEventProducer {
     private String userCreatedTopic;
 
     @Override
-    public void produce(UserEntity user) {
+    public void produce(UserEntity user, String verificationToken) {
         UserCreated event = UserCreated.newBuilder()
                 .setUserId(user.getId())
                 .setEmail(user.getEmail())
                 .setRoles(user.getRoles().stream()
                         .map(r -> r.getRole())
                         .collect(Collectors.toList()))
+                .setVerificationToken(verificationToken)
                 .setCreatedAt(Instant.now())
                 .build();
 

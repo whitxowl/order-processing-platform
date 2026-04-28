@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<body>
+<p>Здравствуйте!</p>
+<p>К сожалению, заказ <strong th:text="${orderId}"></strong> был отменён.</p>
+<p>Товар: <strong th:text="${productId}"></strong>, количество: <strong th:text="${quantity}"></strong></p>
+<p>Причина: <strong th:text="${reason}"></strong></p>
+</body>
+</html>

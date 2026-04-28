@@ -2,8 +2,47 @@ spring:
   application:
     name: notification-service
 
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/notification_db}
+      auto-index-creation: true
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:noreply@example.com}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:noreply@example.com}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8888}
+        specific.avro.reader: true
+
+    listener:
+      ack-mode: manual
+
 server:
   port: 8086
+
+app:
+  auth:
+    verification-url: ${AUTH_VERIFICATION_URL:http://localhost:8083/api/v1/auth/verify}
 
 management:
   endpoints:

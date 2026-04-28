@@ -77,7 +77,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         emailVerificationTokenRepository.save(tokenEntity);
 
-        eventProducer.produce(user);
+        eventProducer.produce(user, verificationToken);
 
         log.info("User registered: {}. Verification token hash: {}", user.getEmail(), TokenUtil.sha256(verificationToken));
 
@@ -154,6 +154,20 @@ public class AuthServiceImpl implements AuthService {
 
         refreshTokenRepository.findByTokenHash(tokenHash)
                 .ifPresent(token -> token.setRevoked(true));
+    }
+
+    @Override
+    @Transactional
+    public void syncRoles(String userId, List<String> roles) {
+        UUID id = UUID.fromString(userId);
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        user.getRoles().clear();
+        roles.forEach(user::addRole);
+        userRepository.save(user);
+
+        log.info("Roles synced for userId={}: {}", userId, roles);
     }
 
     private TokenPairResponse generateTokenPair(UUID userId, String email, List<String> roles) {

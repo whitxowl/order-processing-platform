@@ -1,11 +1,20 @@
 spring:
-  data:
-    mongodb:
-      host: localhost
-      port: 27017
-      database: testdb
   autoconfigure:
     exclude:
+      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
       - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
-      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+
+  data:
+    mongodb:
+      auto-index-creation: true
+
+app:
+  auth:
+    verification-url: http://localhost:8083/api/v1/auth/verify
+
+  kafka:
+    topics:
+      user-created: user.created
+      user-role-changed: user.role-changed
+      order-created: order.created
+      inventory-reserved: inventory.reserved

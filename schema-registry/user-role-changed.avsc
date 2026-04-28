@@ -1,0 +1,10 @@
+{
+  "namespace": "com.whitxowl.userservice.events.user",
+  "type": "record",
+  "name": "UserRoleChanged",
+  "fields": [
+    { "name": "userId",    "type": "string" },
+    { "name": "roles",     "type": { "type": "array", "items": "string" } },
+    { "name": "changedAt", "type": { "type": "long",  "logicalType": "timestamp-millis" } }
+  ]
+}
