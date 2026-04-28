@@ -77,7 +77,7 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         emailVerificationTokenRepository.save(tokenEntity);
 
-        eventProducer.produce(user);
+        eventProducer.produce(user, verificationToken);
 
         log.info("User registered: {}. Verification token hash: {}", user.getEmail(), TokenUtil.sha256(verificationToken));
 

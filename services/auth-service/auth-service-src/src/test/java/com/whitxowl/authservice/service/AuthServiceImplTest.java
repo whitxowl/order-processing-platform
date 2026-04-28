@@ -90,7 +90,7 @@ class AuthServiceImplTest {
         assertThat(response).isNotNull();
         verify(userRepository).save(any(UserEntity.class));
         verify(emailVerificationTokenRepository).save(any(EmailVerificationTokenEntity.class));
-        verify(eventProducer).produce(any(UserEntity.class));
+        verify(eventProducer).produce(any(UserEntity.class), anyString());
     }
 
     @Test

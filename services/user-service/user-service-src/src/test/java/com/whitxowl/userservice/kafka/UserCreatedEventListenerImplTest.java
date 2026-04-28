@@ -100,6 +100,7 @@ class UserCreatedEventListenerImplTest {
                 .setUserId(userId)
                 .setEmail(email)
                 .setRoles(List.of("ROLE_USER"))
+                .setVerificationToken("some-token")
                 .setCreatedAt(Instant.now())
                 .build();
 
@@ -123,6 +124,7 @@ class UserCreatedEventListenerImplTest {
                 .setUserId(userId)
                 .setEmail(email)
                 .setRoles(List.of("ROLE_USER"))
+                .setVerificationToken("some-token")
                 .setCreatedAt(Instant.now())
                 .build();
 

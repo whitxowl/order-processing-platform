@@ -107,7 +107,7 @@ class UserCreatedEventProducerImplTest {
         UserEntity user = buildUser("ROLE_USER");
         long offsetBefore = endOffset();
 
-        producer.produce(user);
+        producer.produce(user, "test-verification-token-hex");
         kafkaTemplate.flush();
 
         UserCreated received = pollFrom(offsetBefore);
@@ -115,6 +115,7 @@ class UserCreatedEventProducerImplTest {
         assertThat(received.getUserId()).isEqualTo(user.getId());
         assertThat(received.getEmail()).isEqualTo(user.getEmail());
         assertThat(received.getRoles()).containsExactly("ROLE_USER");
+        assertThat(received.getVerificationToken()).isEqualTo("test-verification-token-hex");
         assertThat(received.getCreatedAt()).isNotNull();
     }
 
@@ -123,7 +124,7 @@ class UserCreatedEventProducerImplTest {
         UserEntity user = buildUser("ROLE_USER");
         long offsetBefore = endOffset();
 
-        producer.produce(user);
+        producer.produce(user, "test-verification-token-hex");
         kafkaTemplate.flush();
 
         ConsumerRecord<String, Object> record = pollRecordFrom(offsetBefore);
@@ -136,7 +137,7 @@ class UserCreatedEventProducerImplTest {
         UserEntity user = buildUser("ROLE_USER", "ROLE_MANAGER");
         long offsetBefore = endOffset();
 
-        producer.produce(user);
+        producer.produce(user, "test-verification-token-hex");
         kafkaTemplate.flush();
 
         UserCreated received = pollFrom(offsetBefore);

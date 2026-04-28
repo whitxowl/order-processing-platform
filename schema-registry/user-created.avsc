@@ -3,9 +3,10 @@
   "type": "record",
   "name": "UserCreated",
   "fields": [
-    { "name": "userId",    "type": { "type": "string", "logicalType": "uuid" } },
-    { "name": "email",     "type": "string" },
-    { "name": "roles",     "type": { "type": "array", "items": "string" } },
-    { "name": "createdAt", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+    { "name": "userId",            "type": { "type": "string", "logicalType": "uuid" } },
+    { "name": "email",             "type": "string" },
+    { "name": "roles",             "type": { "type": "array", "items": "string" } },
+    { "name": "verificationToken", "type": "string" },
+    { "name": "createdAt",         "type": { "type": "long", "logicalType": "timestamp-millis" } }
   ]
 }
