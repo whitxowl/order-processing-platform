@@ -1,7 +1,7 @@
 package com.whitxowl.notificationservice.kafka;
 
-import com.whitxowl.inventoryservice.events.inventory.InventoryReserved;
 import com.whitxowl.notificationservice.service.NotificationService;
+import com.whitxowl.orderservice.events.order.OrderStatusChanged;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,13 +23,11 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @Testcontainers
-class InventoryReservedEventListenerTest {
+class OrderStatusChangedEventListenerTest {
 
     static final Network network = Network.newNetwork();
 
@@ -65,7 +63,7 @@ class InventoryReservedEventListenerTest {
         registry.add("app.kafka.topics.user-created", () -> "user.created");
         registry.add("app.kafka.topics.user-role-changed", () -> "user.role-changed");
         registry.add("app.kafka.topics.order-created", () -> "order.created");
-        registry.add("app.kafka.topics.inventory-reserved", () -> "inventory.reserved");
+        registry.add("app.kafka.topics.order-status-changed", () -> "order.status-changed");
 
         registry.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
         registry.add("spring.kafka.listener.ack-mode", () -> "manual");
@@ -77,7 +75,7 @@ class InventoryReservedEventListenerTest {
         registry.add("spring.kafka.producer.properties.schema.registry.url",
                 () -> "http://" + schemaRegistry.getHost() + ":" + schemaRegistry.getMappedPort(8081));
         registry.add("spring.kafka.producer.properties.auto.register.schemas", () -> "true");
-        registry.add("spring.kafka.consumer.group-id", () -> "notification-service-inventory-test");
+        registry.add("spring.kafka.consumer.group-id", () -> "notification-service-status-test");
         registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
         registry.add("spring.kafka.consumer.enable-auto-commit", () -> "false");
         registry.add("spring.kafka.consumer.key-deserializer",
@@ -96,23 +94,42 @@ class InventoryReservedEventListenerTest {
     private NotificationService notificationService;
 
     @Test
-    void onInventoryReserved_shouldCallSendInventoryReserved_whenMessageReceived() {
+    void onOrderStatusChanged_shouldCallSendOrderStatusChanged_whenStatusReserved() {
         String orderId = UUID.randomUUID().toString();
-        InventoryReserved event = InventoryReserved.newBuilder()
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
                 .setOrderId(orderId)
+                .setUserId("user-1")
                 .setProductId("prod-1")
                 .setQuantity(3)
-                .setSuccess(true)
-                .setReason(null)
-                .setReservedAt(Instant.now())
+                .setStatus("RESERVED")
+                .setChangedAt(Instant.now())
                 .build();
 
-        kafkaTemplate.send("inventory.reserved", orderId, event);
+        kafkaTemplate.send("order.status-changed", orderId, event);
 
         await()
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted(() ->
-                        verify(notificationService).sendInventoryReserved(event));
+                        verify(notificationService).sendOrderStatusChanged(event));
     }
 
+    @Test
+    void onOrderStatusChanged_shouldCallSendOrderStatusChanged_whenStatusCancelled() {
+        String orderId = UUID.randomUUID().toString();
+        OrderStatusChanged event = OrderStatusChanged.newBuilder()
+                .setOrderId(orderId)
+                .setUserId("user-1")
+                .setProductId("prod-1")
+                .setQuantity(2)
+                .setStatus("CANCELLED")
+                .setChangedAt(Instant.now())
+                .build();
+
+        kafkaTemplate.send("order.status-changed", orderId, event);
+
+        await()
+                .atMost(10, TimeUnit.SECONDS)
+                .untilAsserted(() ->
+                        verify(notificationService).sendOrderStatusChanged(event));
+    }
 }

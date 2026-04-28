@@ -43,6 +43,12 @@ server:
 app:
   auth:
     verification-url: ${AUTH_VERIFICATION_URL:http://localhost:8083/api/v1/auth/verify}
+  kafka:
+    topics:
+      user-created: user.created
+      user-role-changed: user.role-changed
+      order-created: order.created
+      order-status-changed: order.status-changed
 
 management:
   endpoints:
