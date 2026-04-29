@@ -35,6 +35,7 @@
         <kafka-avro-serializer.version>7.6.0</kafka-avro-serializer.version>
         <testcontainers.version>1.19.8</testcontainers.version>
         <logstash-logback.version>7.4</logstash-logback.version>
+        <loki-logback.version>1.5.1</loki-logback.version>
         <jjwt.version>0.12.6</jjwt.version>
 
         <grpc.version>1.63.0</grpc.version>
@@ -130,6 +131,12 @@
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
                 <version>${logstash-logback.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.loki4j</groupId>
+                <artifactId>loki-logback-appender</artifactId>
+                <version>${loki-logback.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

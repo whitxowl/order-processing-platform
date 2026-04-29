@@ -1,0 +1,91 @@
+groups:
+  - name: service-availability
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Сервис {{ $labels.job }} недоступен"
+          description: "Сервис {{ $labels.job }} не отвечает более 1 минуты"
+
+  - name: http
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) by (application)
+          /
+          sum(rate(http_server_requests_seconds_count[5m])) by (application)
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Высокий процент ошибок в {{ $labels.application }}"
+          description: "Более 5% запросов завершаются 5xx в течение 2 минут"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (application, le)
+          ) > 0.150
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокая латентность в {{ $labels.application }}"
+          description: "p95 латентность превышает 150ms (требование ТЗ)"
+
+  - name: jvm
+    rules:
+      - alert: HighHeapUsage
+        expr: |
+          jvm_memory_used_bytes{area="heap"}
+          /
+          jvm_memory_max_bytes{area="heap"}
+          > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокое использование heap в {{ $labels.application }}"
+          description: "Heap занят более чем на 85% в течение 5 минут"
+
+      - alert: CriticalHeapUsage
+        expr: |
+          jvm_memory_used_bytes{area="heap"}
+          /
+          jvm_memory_max_bytes{area="heap"}
+          > 0.95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Критическое использование heap в {{ $labels.application }}"
+          description: "Heap занят более чем на 95% — возможен OOM"
+
+  - name: kafka
+    rules:
+      - alert: KafkaConsumerLagHigh
+        expr: |
+          kafka_consumer_fetch_manager_records_lag{application=~".+"}
+          > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag высокий в {{ $labels.application }}"
+          description: "Consumer отстаёт более чем на 1000 сообщений в течение 5 минут"
+
+  - name: database
+    rules:
+      - alert: DBConnectionPoolExhausted
+        expr: |
+          hikaricp_connections_pending{application=~".+"} > 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Connection pool исчерпан в {{ $labels.application }}"
+          description: "Более 5 запросов ждут соединения с БД более 2 минут"

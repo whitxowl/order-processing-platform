@@ -75,6 +75,34 @@ services:
       retries: 10
       start_period: 30s
 
+  loki:
+    image: grafana/loki:3.0.0
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./infra/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/loki-config.yml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4318:4318"     # OTLP HTTP receiver
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:16686/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
   auth-service:
     build:
       context: .
@@ -87,12 +115,18 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       JWT_SECRET: ${JWT_SECRET}
+      LOKI_URL: http://loki:3100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       postgres:
         condition: service_healthy
       redpanda:
         condition: service_healthy
       schema-registry:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
@@ -110,10 +144,16 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      LOKI_URL: http://loki:3100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       postgres:
         condition: service_healthy
       redpanda:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
 
   product-service:
@@ -123,10 +163,16 @@ services:
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/product_db
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      LOKI_URL: http://loki:3100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       mongodb:
         condition: service_healthy
       redpanda:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
 
   inventory-service:
@@ -139,10 +185,16 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       GRPC_SERVER_PORT: 9094
+      LOKI_URL: http://loki:3100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       postgres:
         condition: service_healthy
       redpanda:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health | grep -q '\"status\":\"UP\"' || exit 1" ]
@@ -163,12 +215,18 @@ services:
       GRPC_SERVER_PORT: 9095
       INVENTORY_GRPC_HOST: inventory-service
       INVENTORY_GRPC_PORT: 9094
+      LOKI_URL: http://loki:3100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       postgres:
         condition: service_healthy
       redpanda:
         condition: service_healthy
       inventory-service:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
 
   notification-service:
@@ -180,12 +238,18 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
+      LOKI_URL: http://loki:3100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
       redpanda:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+      jaeger:
         condition: service_healthy
 
   api-gateway:
@@ -202,10 +266,67 @@ services:
       ORDER_SERVICE_URL: http://order-service:8085
       NOTIFICATION_SERVICE_URL: http://notification-service:8086
       JWT_SECRET: ${JWT_SECRET}
+      LOKI_URL: http://loki:3100
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
       auth-service:
         condition: service_healthy
+      loki:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - auth-service
+      - user-service
+      - product-service
+      - inventory-service
+      - order-service
+      - notification-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres-data:
   mongo-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
