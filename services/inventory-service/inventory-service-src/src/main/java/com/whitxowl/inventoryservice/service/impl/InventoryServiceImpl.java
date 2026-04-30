@@ -9,7 +9,6 @@ import com.whitxowl.inventoryservice.exception.DuplicateReservationException;
 import com.whitxowl.inventoryservice.exception.InsufficientStockException;
 import com.whitxowl.inventoryservice.exception.InventoryItemNotFoundException;
 import com.whitxowl.inventoryservice.exception.ReservationNotFoundException;
-import com.whitxowl.inventoryservice.kafka.producer.InventoryReservedEventProducer;
 import com.whitxowl.inventoryservice.mapper.InventoryMapper;
 import com.whitxowl.inventoryservice.repository.InventoryItemRepository;
 import com.whitxowl.inventoryservice.repository.ReservationRepository;
@@ -30,9 +29,11 @@ import java.util.List;
 public class InventoryServiceImpl implements InventoryService {
 
     private final InventoryItemRepository inventoryItemRepository;
-    private final ReservationRepository reservationRepository;
-    private final InventoryMapper inventoryMapper;
-    private final InventoryReservedEventProducer eventProducer;
+    private final ReservationRepository   reservationRepository;
+    private final InventoryMapper         inventoryMapper;
+
+    // eventProducer удалён: публикация inventory.reserved теперь выполняется
+    // топологией OrderReservationTopology через возвращаемое значение mapValues().
 
     @Override
     @Transactional
@@ -82,19 +83,12 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         InventoryItemEntity item = inventoryItemRepository.findByProductId(productId)
-                .orElseGet(() -> {
-                    InventoryItemNotFoundException ex = new InventoryItemNotFoundException(productId);
-                    eventProducer.produceFailure(orderId, productId, quantity, ex.getMessage());
-                    throw ex;
-                });
+                .orElseThrow(() -> new InventoryItemNotFoundException(productId));
 
         if (item.getAvailable() < quantity) {
             log.warn("Insufficient stock [productId={}]: requested={}, available={}",
                     productId, quantity, item.getAvailable());
-            InsufficientStockException ex =
-                    new InsufficientStockException(productId, quantity, item.getAvailable());
-            eventProducer.produceFailure(orderId, productId, quantity, ex.getMessage());
-            throw ex;
+            throw new InsufficientStockException(productId, quantity, item.getAvailable());
         }
 
         item.setReserved(item.getReserved() + quantity);
@@ -111,8 +105,6 @@ public class InventoryServiceImpl implements InventoryService {
 
         log.info("Stock reserved [orderId={}, productId={}, quantity={}]",
                 orderId, productId, quantity);
-
-        eventProducer.produceSuccess(orderId, productId, quantity);
 
         return inventoryMapper.toReservationResponse(saved);
     }

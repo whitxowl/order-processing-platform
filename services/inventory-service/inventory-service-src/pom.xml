@@ -80,6 +80,22 @@
             <artifactId>kafka-avro-serializer</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-streams-avro-serde</artifactId>
+        </dependency>
+
+        <!-- Для TopologyTestDriver в тестах -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams-test-utils</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ===== gRPC ===== -->
         <dependency>
             <groupId>net.devh</groupId>

@@ -105,6 +105,12 @@
                 <version>${kafka-avro-serializer.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-streams-avro-serde</artifactId>
+                <version>${kafka-avro-serializer.version}</version>
+            </dependency>
+
             <!-- gRPC -->
             <dependency>
                 <groupId>net.devh</groupId>

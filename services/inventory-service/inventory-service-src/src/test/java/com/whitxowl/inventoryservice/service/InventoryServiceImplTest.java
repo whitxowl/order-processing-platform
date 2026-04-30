@@ -9,7 +9,6 @@ import com.whitxowl.inventoryservice.exception.DuplicateReservationException;
 import com.whitxowl.inventoryservice.exception.InsufficientStockException;
 import com.whitxowl.inventoryservice.exception.InventoryItemNotFoundException;
 import com.whitxowl.inventoryservice.exception.ReservationNotFoundException;
-import com.whitxowl.inventoryservice.kafka.producer.InventoryReservedEventProducer;
 import com.whitxowl.inventoryservice.mapper.InventoryMapper;
 import com.whitxowl.inventoryservice.repository.InventoryItemRepository;
 import com.whitxowl.inventoryservice.repository.ReservationRepository;
@@ -26,7 +25,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,9 +38,6 @@ class InventoryServiceImplTest {
 
     @Mock
     private InventoryMapper inventoryMapper;
-
-    @Mock
-    private InventoryReservedEventProducer eventProducer;
 
     @InjectMocks
     private InventoryServiceImpl service;
@@ -115,11 +110,10 @@ class InventoryServiceImplTest {
 
         assertThat(response.getStatus()).isEqualTo(ReservationStatus.RESERVED);
         assertThat(item.getReserved()).isEqualTo(3);
-        verify(eventProducer).produceSuccess("o1", "p1", 3);
     }
 
     @Test
-    void doReserve_shouldThrowAndPublishFailure_whenInsufficientStock() {
+    void doReserve_shouldThrow_whenInsufficientStock() {
         InventoryItemEntity item = InventoryItemEntity.builder()
                 .productId("p1").quantity(2).reserved(0).build();
         when(reservationRepository.existsByOrderId("o1")).thenReturn(false);
@@ -127,8 +121,6 @@ class InventoryServiceImplTest {
 
         assertThatThrownBy(() -> service.reserve("o1", "p1", 5))
                 .isInstanceOf(InsufficientStockException.class);
-
-        verify(eventProducer).produceFailure(eq("o1"), eq("p1"), eq(5), anyString());
     }
 
     @Test
@@ -139,18 +131,15 @@ class InventoryServiceImplTest {
                 .isInstanceOf(DuplicateReservationException.class);
 
         verifyNoInteractions(inventoryItemRepository);
-        verifyNoInteractions(eventProducer);
     }
 
     @Test
-    void doReserve_shouldThrowAndPublishFailure_whenItemNotFound() {
+    void doReserve_shouldThrow_whenItemNotFound() {
         when(reservationRepository.existsByOrderId("o1")).thenReturn(false);
         when(inventoryItemRepository.findByProductId("p1")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.reserve("o1", "p1", 3))
                 .isInstanceOf(InventoryItemNotFoundException.class);
-
-        verify(eventProducer).produceFailure(eq("o1"), eq("p1"), eq(3), anyString());
     }
 
     // ── confirmReservation ────────────────────────────────────────────────────
