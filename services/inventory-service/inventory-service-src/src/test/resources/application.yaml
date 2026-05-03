@@ -24,3 +24,6 @@ app:
 grpc:
   server:
     port: 0
+
+springdoc:
+  server-url: http://localhost:8080

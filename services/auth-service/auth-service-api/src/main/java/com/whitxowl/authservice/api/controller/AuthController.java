@@ -12,9 +12,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import static com.whitxowl.authservice.api.constant.ApiConstant.AUTH_URL;
 
@@ -53,7 +55,7 @@ public interface AuthController {
     @PostMapping("/refresh")
     ResponseEntity<TokenPairResponse> refresh(@Valid @RequestBody RefreshRequest request);
 
-    @Operation(summary = "Verify email", description = "Подтверждение email")
+    @Operation(summary = "Verify email (POST)", description = "Подтверждение email через тело запроса")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Email успешно подтверждён"),
             @ApiResponse(responseCode = "400", description = "Невалидный или просроченный токен"),
@@ -61,6 +63,15 @@ public interface AuthController {
     })
     @PostMapping("/verify")
     ResponseEntity<Void> verify(@Valid @RequestBody VerifyEmailRequest request);
+
+    @Operation(summary = "Verify email (GET)", description = "Подтверждение email по ссылке из письма")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Email успешно подтверждён"),
+            @ApiResponse(responseCode = "400", description = "Невалидный или просроченный токен"),
+            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
+    })
+    @GetMapping("/verify")
+    ResponseEntity<Void> verifyByLink(@RequestParam("token") String token);
 
     @Operation(summary = "Logout", description = "Отзыв refresh token")
     @ApiResponses(value = {
