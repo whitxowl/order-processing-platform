@@ -29,7 +29,6 @@ spec:
           envFrom:
             - secretRef:
                 name: platform-secrets
-                optional: true
           {{- if $svc.env }}
           env:
             {{- range $key, $val := $svc.env }}
