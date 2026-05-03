@@ -1,6 +1,22 @@
 spring:
   application:
     name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: false
+            maxAge: 3600
 
 server:
   port: 8080
@@ -28,3 +44,27 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://jaeger:4318}/v1/traces
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: auth-service
+        url: /openapi/auth-service
+      - name: user-service
+        url: /openapi/user-service
+      - name: product-service
+        url: /openapi/product-service
+      - name: inventory-service
+        url: /openapi/inventory-service
+      - name: order-service
+        url: /openapi/order-service

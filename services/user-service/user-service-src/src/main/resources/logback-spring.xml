@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProperty name="appName" source="spring.application.name"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
+
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL:-http://loki:3100}/loki/api/v1/push</url>
+            <connectionTimeoutMs>5000</connectionTimeoutMs>
+            <requestTimeoutMs>5000</requestTimeoutMs>
+        </http>
+        <format>
+            <label>
+                <pattern>application=${appName},host=${HOSTNAME:-localhost},level=%level</pattern>
+            </label>
+            <message class="com.github.loki4j.logback.JsonLayout">
+                <appendRawJsonMessage>false</appendRawJsonMessage>
+            </message>
+            <sortByTime>true</sortByTime>
+        </format>
+        <send>
+            <batchMaxItems>1000</batchMaxItems>
+            <batchTimeoutMs>5000</batchTimeoutMs>
+        </send>
+        <dropRateLimitedBatches>true</dropRateLimitedBatches>
+        <verbose>false</verbose>
+    </appender>
+
+    <appender name="LOKI_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="LOKI"/>
+        <queueSize>10000</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="LOKI_ASYNC"/>
+    </root>
+
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.hibernate"       level="WARN"/>
+    <logger name="org.apache.kafka"    level="WARN"/>
+    <logger name="io.confluent"        level="WARN"/>
+</configuration>

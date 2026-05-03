@@ -21,3 +21,12 @@ security:
     access-ttl: 15m
     refresh-ttl: 7d
     issuer: auth-service
+
+app:
+  kafka:
+    topics:
+      user-created: user.created
+      user-role-changed: user.role-changed
+
+springdoc:
+  server-url: http://localhost:8080

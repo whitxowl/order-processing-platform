@@ -27,3 +27,6 @@ grpc:
     inventory-service:
       address: static://localhost:9999
       negotiation-type: plaintext
+
+springdoc:
+  server-url: http://localhost:8080

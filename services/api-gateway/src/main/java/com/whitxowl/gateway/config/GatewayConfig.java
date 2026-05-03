@@ -71,6 +71,33 @@ public class GatewayConfig {
                         .filters(f -> f.filter(jwtGatewayFilter))
                         .uri(notificationServiceUrl))
 
+                // ── OpenAPI / Swagger ───────────────────────────
+
+                .route("openapi-auth", r -> r
+                        .path("/openapi/auth-service")
+                        .filters(f -> f.rewritePath("/openapi/auth-service", "/v3/api-docs"))
+                        .uri(authServiceUrl))
+
+                .route("openapi-user", r -> r
+                        .path("/openapi/user-service")
+                        .filters(f -> f.rewritePath("/openapi/user-service", "/v3/api-docs"))
+                        .uri(userServiceUrl))
+
+                .route("openapi-product", r -> r
+                        .path("/openapi/product-service")
+                        .filters(f -> f.rewritePath("/openapi/product-service", "/v3/api-docs"))
+                        .uri(productServiceUrl))
+
+                .route("openapi-inventory", r -> r
+                        .path("/openapi/inventory-service")
+                        .filters(f -> f.rewritePath("/openapi/inventory-service", "/v3/api-docs"))
+                        .uri(inventoryServiceUrl))
+
+                .route("openapi-order", r -> r
+                        .path("/openapi/order-service")
+                        .filters(f -> f.rewritePath("/openapi/order-service", "/v3/api-docs"))
+                        .uri(orderServiceUrl))
+
                 .build();
     }
 }

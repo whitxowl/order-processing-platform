@@ -44,6 +44,14 @@ public class AuthControllerImpl implements AuthController {
     }
 
     @Override
+    public ResponseEntity<Void> verifyByLink(String token) {
+        VerifyEmailRequest request = new VerifyEmailRequest();
+        request.setToken(token);
+        authService.verify(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
     public ResponseEntity<Void> logout(RefreshRequest request) {
         authService.logout(request);
         return ResponseEntity.noContent().build();

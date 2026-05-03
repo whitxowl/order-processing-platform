@@ -20,3 +20,6 @@ app:
     topics:
       user-created: user.created
       user-role-changed: user.role-changed
+
+springdoc:
+  server-url: http://localhost:8080
