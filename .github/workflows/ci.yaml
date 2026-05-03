@@ -56,7 +56,7 @@ jobs:
           reporter: java-junit
 
   quality-gate:
-    name: OWASP + Coverage check
+    name: OWASP Dependency Check
     runs-on: ubuntu-latest
     needs: build
     if: github.event_name == 'pull_request'
@@ -70,8 +70,20 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Cache OWASP NVD database
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ github.run_id }}
+          restore-keys: |
+            owasp-nvd-
+
       - name: OWASP Dependency Check
-        run: ./mvnw dependency-check:check --no-transfer-progress
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          ./mvnw dependency-check:check --no-transfer-progress \
+            -DnvdApiKey=$NVD_API_KEY
 
       - name: Upload OWASP report
         if: always()
