@@ -18,7 +18,6 @@
 
     <dependencies>
 
-        <!-- ===== Внутренний API-модуль ===== -->
         <dependency>
             <groupId>com.whitxowl</groupId>
             <artifactId>inventory-service-api</artifactId>
@@ -89,7 +88,6 @@
             <artifactId>kafka-streams-avro-serde</artifactId>
         </dependency>
 
-        <!-- Для TopologyTestDriver в тестах -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-streams-test-utils</artifactId>
@@ -178,6 +176,11 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
             <scope>test</scope>
         </dependency>
 
