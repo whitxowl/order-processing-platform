@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Checkstyle + Tests + Install
+    name: Checkstyle + Tests + Coverage
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -91,4 +91,60 @@ jobs:
         with:
           name: owasp-report
           path: '**/target/dependency-check-report.html'
+          retention-days: 7
+
+  trivy:
+    name: Trivy Scan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build jar artifacts
+        run: ./mvnw clean package -DskipTests --no-transfer-progress
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker images
+        run: |
+          SERVICES="auth-service user-service product-service inventory-service order-service notification-service api-gateway"
+          for svc in $SERVICES; do
+            docker build -f services/$svc/Dockerfile -t $svc:scan .
+          done
+
+      - name: Run Trivy on each image
+        run: |
+          SERVICES="auth-service user-service product-service inventory-service order-service notification-service api-gateway"
+          FAILED=""
+          for svc in $SERVICES; do
+            echo "=== Scanning $svc ==="
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v $HOME/.cache/trivy:/root/.cache/trivy \
+              aquasec/trivy:latest image \
+              --severity CRITICAL \
+              --ignore-unfixed \
+              --exit-code 1 \
+              $svc:scan || FAILED="$FAILED $svc"
+          done
+          if [ -n "$FAILED" ]; then
+            echo "CRITICAL vulnerabilities found in:$FAILED"
+            exit 1
+          fi
+
+      - name: Upload Trivy results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-*.txt
           retention-days: 7
