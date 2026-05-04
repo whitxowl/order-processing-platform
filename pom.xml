@@ -23,15 +23,18 @@
 
     <properties>
         <java.version>17</java.version>
-        <spring-boot.version>3.3.12</spring-boot.version>
+        <spring-boot.version>3.3.13</spring-boot.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
+        <avro.version>1.11.4</avro.version>
+
+        <thymeleaf.version>3.1.4.RELEASE</thymeleaf.version>
+
         <lombok.version>1.18.32</lombok.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <springdoc.version>2.5.0</springdoc.version>
-        <avro.version>1.11.3</avro.version>
         <kafka-avro-serializer.version>7.6.0</kafka-avro-serializer.version>
         <testcontainers.version>1.19.8</testcontainers.version>
         <logstash-logback.version>7.4</logstash-logback.version>
@@ -41,10 +44,35 @@
         <grpc.version>1.63.0</grpc.version>
         <protobuf.version>3.25.3</protobuf.version>
         <grpc-spring-boot.version>3.1.0.RELEASE</grpc-spring-boot.version>
+
+        <tomcat.version>10.1.53</tomcat.version>
+        <spring-security.version>6.5.9</spring-security.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.security</groupId>
+                <artifactId>spring-security-web</artifactId>
+                <version>${spring-security.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.security</groupId>
+                <artifactId>spring-security-config</artifactId>
+                <version>${spring-security.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.security</groupId>
+                <artifactId>spring-security-core</artifactId>
+                <version>${spring-security.version}</version>
+            </dependency>
+
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -58,7 +86,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2023.0.2</version>
+                <version>2023.0.5</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -106,7 +134,7 @@
                 <version>${mapstruct.version}</version>
             </dependency>
 
-            <!-- Avro (Kafka serialization) -->
+            <!-- Avro -->
             <dependency>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro</artifactId>
@@ -126,6 +154,17 @@
                 <version>${kafka-avro-serializer.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.thymeleaf</groupId>
+                <artifactId>thymeleaf</artifactId>
+                <version>${thymeleaf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.thymeleaf</groupId>
+                <artifactId>thymeleaf-spring6</artifactId>
+                <version>${thymeleaf.version}</version>
+            </dependency>
+
             <!-- gRPC -->
             <dependency>
                 <groupId>net.devh</groupId>
@@ -140,7 +179,7 @@
             <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
-                <version>3.25.3</version>
+                <version>${protobuf.version}</version>
             </dependency>
             <dependency>
                 <groupId>javax.annotation</groupId>
@@ -151,7 +190,7 @@
             <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
-                <version>2.5.0</version>
+                <version>${springdoc.version}</version>
             </dependency>
 
             <dependency>
