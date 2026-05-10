@@ -1,0 +1,19 @@
+services:
+  auth-service-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  user-service-url: ${USER_SERVICE_URL:http://localhost:8082}
+  product-service-url: ${PRODUCT_SERVICE_URL:http://localhost:8083}
+  inventory-service-url: ${INVENTORY_SERVICE_URL:http://localhost:8084}
+  order-service-url: ${ORDER_SERVICE_URL:http://localhost:8085}
+  notification-service-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8086}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgc2VjcmV0IGtleSBmb3IgZGV2ZWxvcG1lbnQgb25seSEhIQ==}
+    issuer: auth-service
+  internal:
+    secret: ${INTERNAL_SECRET:dev-internal-secret}
+
+rate-limiter:
+  replenish-rate: 1
+  burst-capacity: 3
+  requested-tokens: 1

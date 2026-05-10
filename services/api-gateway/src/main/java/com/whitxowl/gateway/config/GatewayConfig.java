@@ -3,17 +3,22 @@ package com.whitxowl.gateway.config;
 import com.whitxowl.gateway.security.JwtGatewayFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
+import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 
 @Configuration
 @RequiredArgsConstructor
 public class GatewayConfig {
 
     private final JwtGatewayFilter jwtGatewayFilter;
+    private final RedisRateLimiter redisRateLimiter;
+    private final KeyResolver userKeyResolver;
 
     @Value("${services.auth-service-url}")
     private String authServiceUrl;
@@ -39,39 +44,79 @@ public class GatewayConfig {
 
                 .route("auth-public", r -> r
                         .path("/api/v1/auth/**")
+                        .filters(f -> f.requestRateLimiter(c -> {
+                            c.setRateLimiter(redisRateLimiter);
+                            c.setKeyResolver(userKeyResolver);
+                            c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                        }))
                         .uri(authServiceUrl))
 
                 .route("products-public", r -> r
                         .path("/api/v1/products/**")
                         .and().method(HttpMethod.GET)
+                        .filters(f -> f.requestRateLimiter(c -> {
+                            c.setRateLimiter(redisRateLimiter);
+                            c.setKeyResolver(userKeyResolver);
+                            c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                        }))
                         .uri(productServiceUrl))
 
                 .route("products-secured", r -> r
                         .path("/api/v1/products/**")
-                        .filters(f -> f.filter(jwtGatewayFilter))
+                        .filters(f -> f
+                                .filter(jwtGatewayFilter)
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(userKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri(productServiceUrl))
 
                 .route("users-secured", r -> r
                         .path("/api/v1/users/**")
-                        .filters(f -> f.filter(jwtGatewayFilter))
+                        .filters(f -> f
+                                .filter(jwtGatewayFilter)
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(userKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri(userServiceUrl))
 
                 .route("inventory-secured", r -> r
                         .path("/api/v1/inventory/**")
-                        .filters(f -> f.filter(jwtGatewayFilter))
+                        .filters(f -> f
+                                .filter(jwtGatewayFilter)
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(userKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri(inventoryServiceUrl))
 
                 .route("orders-secured", r -> r
                         .path("/api/v1/orders/**")
-                        .filters(f -> f.filter(jwtGatewayFilter))
+                        .filters(f -> f
+                                .filter(jwtGatewayFilter)
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(userKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri(orderServiceUrl))
 
                 .route("notifications-secured", r -> r
                         .path("/api/v1/notifications/**")
-                        .filters(f -> f.filter(jwtGatewayFilter))
+                        .filters(f -> f
+                                .filter(jwtGatewayFilter)
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(userKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri(notificationServiceUrl))
 
-                // ── OpenAPI / Swagger ───────────────────────────
+                // ── OpenAPI / Swagger ───────────────────────────────────────
 
                 .route("openapi-auth", r -> r
                         .path("/openapi/auth-service")

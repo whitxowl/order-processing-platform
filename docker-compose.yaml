@@ -324,6 +324,8 @@ services:
       ORDER_SERVICE_URL: http://order-service:8085
       NOTIFICATION_SERVICE_URL: http://notification-service:8086
       JWT_SECRET: ${JWT_SECRET}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       LOKI_URL: http://loki:3100
       OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
     depends_on:
@@ -338,6 +340,8 @@ services:
       order-service:
         condition: service_healthy
       notification-service:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       loki:
         condition: service_healthy

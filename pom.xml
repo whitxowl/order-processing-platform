@@ -36,7 +36,7 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <springdoc.version>2.5.0</springdoc.version>
         <kafka-avro-serializer.version>7.6.0</kafka-avro-serializer.version>
-        <testcontainers.version>1.19.8</testcontainers.version>
+        <testcontainers.version>2.0.3</testcontainers.version>
         <logstash-logback.version>7.4</logstash-logback.version>
         <loki-logback.version>1.5.1</loki-logback.version>
         <jjwt.version>0.12.6</jjwt.version>
@@ -73,6 +73,15 @@
                 <version>${spring-security.version}</version>
             </dependency>
 
+            <!-- Testcontainers BOM -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -87,15 +96,6 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>2023.0.5</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <!-- Testcontainers BOM -->
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers-bom</artifactId>
-                <version>${testcontainers.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

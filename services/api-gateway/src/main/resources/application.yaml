@@ -1,6 +1,10 @@
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   cloud:
     gateway:
       globalcors:
@@ -35,6 +39,11 @@ security:
     issuer: auth-service
   internal:
     secret: ${INTERNAL_SECRET:dev-internal-secret}
+
+rate-limiter:
+  replenish-rate: 20
+  burst-capacity: 40
+  requested-tokens: 1
 
 management:
   endpoints:
