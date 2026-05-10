@@ -1,5 +1,6 @@
 global:
   imageTag: latest
+  imageRegistry: ""
 
 services:
   apiGateway:

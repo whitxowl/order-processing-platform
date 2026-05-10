@@ -18,7 +18,12 @@ spec:
     spec:
       containers:
         - name: {{ $name | kebabcase }}
-          image: "{{ $svc.image | default (printf "%s:%s" ($name | kebabcase) $.Values.global.imageTag) }}"
+          image: >-
+            {{- if $.Values.global.imageRegistry -}}
+              {{ $.Values.global.imageRegistry }}/{{ $name | kebabcase }}:{{ $.Values.global.imageTag }}
+            {{- else -}}
+              {{ $name | kebabcase }}:{{ $.Values.global.imageTag }}
+            {{- end }}
           ports:
             - containerPort: {{ $svc.port }}
               name: http
