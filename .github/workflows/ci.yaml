@@ -174,38 +174,3 @@ jobs:
             docker push ${{ env.IMAGE_PREFIX }}/$svc:${{ github.sha }}
             docker push ${{ env.IMAGE_PREFIX }}/$svc:latest
           done
-
-  deploy-dev:
-    name: Helm Deploy → dev
-    runs-on: ubuntu-latest
-    needs: docker
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Create k3d cluster
-        uses: AbsaOSS/k3d-action@v2
-        with:
-          cluster-name: dev
-          args: --port "8080:30080@loadbalancer"
-
-      - name: Create dev namespace
-        run: kubectl create namespace dev
-
-      - name: Inject dev secrets
-        run: |
-          kubectl create secret generic platform-secrets \
-            --namespace dev \
-            --from-env-file=.secrets/dev/.env
-
-      - name: Helm deploy to dev
-        run: |
-          helm upgrade --install platform infra/helm/charts/platform \
-            --namespace dev \
-            --set global.imageTag=${{ github.sha }} \
-            --set global.imageRegistry=${{ env.IMAGE_PREFIX }} \
-            --wait \
-            --timeout 120s
-
-      - name: Verify all pods are running
-        run: kubectl get pods -n dev
